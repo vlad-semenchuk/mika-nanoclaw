@@ -1,11 +1,17 @@
 ---
 name: add-voice-transcription
-description: Add voice message transcription to NanoClaw using OpenAI's Whisper API. Automatically transcribes WhatsApp voice notes so the agent can read and respond to them.
+description: Add voice message transcription to NanoClaw using Groq or OpenAI's Whisper API. Automatically transcribes voice notes on WhatsApp and Telegram so the agent can read and respond to them.
 ---
 
 # Add Voice Transcription
 
-This skill adds automatic voice message transcription to NanoClaw's WhatsApp channel using OpenAI's Whisper API. When a voice note arrives, it is downloaded, transcribed, and delivered to the agent as `[Voice: <transcript>]`.
+This skill adds automatic voice message transcription to NanoClaw's WhatsApp and Telegram channels. When a voice note arrives, it is downloaded, transcribed, and delivered to the agent as `[Voice: <transcript>]`.
+
+Supported providers:
+- **Groq** (recommended — free tier, fast): uses `whisper-large-v3-turbo`
+- **OpenAI**: uses `whisper-1`
+
+Groq is used automatically when `GROQ_API_KEY` is set; falls back to OpenAI if `OPENAI_API_KEY` is set instead.
 
 ## Phase 1: Pre-flight
 
@@ -15,11 +21,11 @@ Read `.nanoclaw/state.yaml`. If `voice-transcription` is in `applied_skills`, sk
 
 ### Ask the user
 
-Use `AskUserQuestion` to collect information:
+Use `AskUserQuestion` to collect the API provider and key:
 
-AskUserQuestion: Do you have an OpenAI API key for Whisper transcription?
-
-If yes, collect it now. If no, direct them to create one at https://platform.openai.com/api-keys.
+Options:
+- **Groq** (free tier): create a free key at https://console.groq.com/keys
+- **OpenAI** (paid): create a key at https://platform.openai.com/api-keys
 
 ## Phase 2: Apply Code Changes
 
@@ -40,16 +46,19 @@ npx tsx scripts/apply-skill.ts .claude/skills/add-voice-transcription
 ```
 
 This deterministically:
-- Adds `src/transcription.ts` (voice transcription module using OpenAI Whisper)
-- Three-way merges voice handling into `src/channels/whatsapp.ts` (isVoiceMessage check, transcribeAudioMessage call)
-- Three-way merges transcription tests into `src/channels/whatsapp.test.ts` (mock + 3 test cases)
+- Adds `src/transcription.ts` (channel-agnostic transcription module supporting Groq and OpenAI)
+- Three-way merges voice handling into `src/channels/whatsapp.ts`
+- Three-way merges voice handling into `src/channels/telegram.ts` (download + transcribe voice notes)
+- Three-way merges transcription tests into `src/channels/whatsapp.test.ts`
+- Three-way merges transcription tests into `src/channels/telegram.test.ts` (6 new test cases)
 - Installs the `openai` npm dependency
-- Updates `.env.example` with `OPENAI_API_KEY`
+- Updates `.env.example` with `GROQ_API_KEY` / `OPENAI_API_KEY`
 - Records the application in `.nanoclaw/state.yaml`
 
 If the apply reports merge conflicts, read the intent files:
 - `modify/src/channels/whatsapp.ts.intent.md` — what changed and invariants for whatsapp.ts
-- `modify/src/channels/whatsapp.test.ts.intent.md` — what changed for whatsapp.test.ts
+- `modify/src/channels/telegram.ts.intent.md` — what changed and invariants for telegram.ts
+- `modify/src/channels/telegram.test.ts.intent.md` — what changed for telegram.test.ts
 
 ### Validate code changes
 
@@ -58,40 +67,33 @@ npm test
 npm run build
 ```
 
-All tests must pass (including the 3 new voice transcription tests) and build must be clean before proceeding.
+All tests must pass (including the new voice transcription tests for both channels) and build must be clean before proceeding.
 
 ## Phase 3: Configure
 
-### Get OpenAI API key (if needed)
+### Get API key (if not already collected)
 
-If the user doesn't have an API key:
+**Groq (recommended — free):**
+1. Go to https://console.groq.com/keys
+2. Click "Create API Key"
+3. Copy the key (starts with `gsk_`)
 
-> I need you to create an OpenAI API key:
->
-> 1. Go to https://platform.openai.com/api-keys
-> 2. Click "Create new secret key"
-> 3. Give it a name (e.g., "NanoClaw Transcription")
-> 4. Copy the key (starts with `sk-`)
->
-> Cost: ~$0.006 per minute of audio (~$0.003 per typical 30-second voice note)
-
-Wait for the user to provide the key.
+**OpenAI (paid, ~$0.006/min):**
+1. Go to https://platform.openai.com/api-keys
+2. Click "Create new secret key"
+3. Copy the key (starts with `sk-`)
 
 ### Add to environment
 
 Add to `.env`:
 
 ```bash
-OPENAI_API_KEY=<their-key>
+# Groq (recommended — free tier):
+GROQ_API_KEY=gsk_...
+
+# OR OpenAI:
+# OPENAI_API_KEY=sk-...
 ```
-
-Sync to container environment:
-
-```bash
-mkdir -p data/env && cp .env data/env/env
-```
-
-The container reads environment from `data/env/env`, not `.env` directly.
 
 ### Build and restart
 
@@ -107,7 +109,7 @@ launchctl kickstart -k gui/$(id -u)/com.nanoclaw  # macOS
 
 Tell the user:
 
-> Send a voice note in any registered WhatsApp chat. The agent should receive it as `[Voice: <transcript>]` and respond to its content.
+> Send a voice note in any registered WhatsApp or Telegram chat. The agent should receive it as `[Voice: <transcript>]` and respond to its content.
 
 ### Check logs if needed
 
@@ -116,25 +118,22 @@ tail -f logs/nanoclaw.log | grep -i voice
 ```
 
 Look for:
-- `Transcribed voice message` — successful transcription with character count
-- `OPENAI_API_KEY not set` — key missing from `.env`
-- `OpenAI transcription failed` — API error (check key validity, billing)
-- `Failed to download audio message` — media download issue
+- `Transcribed voice message` (WhatsApp) / `Telegram voice message stored` with `transcribed: true` — success
+- `Neither GROQ_API_KEY nor OPENAI_API_KEY is set` — key missing from `.env`
+- `Transcription failed:` — API error (check key validity)
+- `Failed to transcribe Telegram voice message` — download or transcription error
 
 ## Troubleshooting
 
-### Voice notes show "[Voice Message - transcription unavailable]"
+### Voice notes show "[Voice Message - transcription unavailable]" (WhatsApp)
 
-1. Check `OPENAI_API_KEY` is set in `.env` AND synced to `data/env/env`
-2. Verify key works: `curl -s https://api.openai.com/v1/models -H "Authorization: Bearer $OPENAI_API_KEY" | head -c 200`
-3. Check OpenAI billing — Whisper requires a funded account
+1. Check `GROQ_API_KEY` or `OPENAI_API_KEY` is set in `.env`
+2. Verify Groq key works: `curl -s https://api.groq.com/openai/v1/models -H "Authorization: Bearer $GROQ_API_KEY" | head -c 200`
 
-### Voice notes show "[Voice Message - transcription failed]"
+### Voice notes show "[Voice message]" (Telegram)
 
-Check logs for the specific error. Common causes:
-- Network timeout — transient, will work on next message
-- Invalid API key — regenerate at https://platform.openai.com/api-keys
-- Rate limiting — wait and retry
+1. Check `GROQ_API_KEY` or `OPENAI_API_KEY` is set in `.env`
+2. Check logs for specific error (download failure vs. transcription failure)
 
 ### Agent doesn't respond to voice notes
 

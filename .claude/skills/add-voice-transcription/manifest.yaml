@@ -1,17 +1,20 @@
 skill: voice-transcription
-version: 1.0.0
-description: "Voice message transcription via OpenAI Whisper"
+version: 1.1.0
+description: "Voice message transcription via Groq or OpenAI Whisper — supports WhatsApp and Telegram"
 core_version: 0.1.0
 adds:
   - src/transcription.ts
 modifies:
   - src/channels/whatsapp.ts
   - src/channels/whatsapp.test.ts
+  - src/channels/telegram.ts
+  - src/channels/telegram.test.ts
 structured:
   npm_dependencies:
     openai: "^4.77.0"
   env_additions:
+    - GROQ_API_KEY
     - OPENAI_API_KEY
 conflicts: []
 depends: []
-test: "npx vitest run src/channels/whatsapp.test.ts"
+test: "npx vitest run src/channels/whatsapp.test.ts src/channels/telegram.test.ts"
