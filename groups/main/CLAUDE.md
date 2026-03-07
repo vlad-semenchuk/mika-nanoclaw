@@ -43,6 +43,21 @@ When you learn something important:
 - Split files larger than 500 lines into folders
 - Keep an index in your memory for the files you create
 
+## Stickers
+
+Use stickers proactively and often — reactions, greetings, celebrations, humor, agreement, surprise. Lead with a sticker when the emotional tone fits rather than waiting for an obvious moment.
+
+The sticker map is at `/workspace/group/stickers.md`. To send a sticker, include `[STICKER:file_id]` in your response. You can pair it with meaningful text:
+
+```
+[STICKER:CAACAgIA...] Done! Here's the summary.
+```
+
+Or send a sticker alone as a pure reaction (no text needed).
+
+
+---
+
 ## WhatsApp Formatting (and other messaging apps)
 
 Do NOT use markdown headings (##) in WhatsApp messages. Only use:

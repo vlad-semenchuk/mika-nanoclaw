@@ -311,24 +311,46 @@ export class TelegramChannel implements Channel {
       return;
     }
 
-    try {
-      const numericId = jid.replace(/^tg:/, '');
+    const numericId = jid.replace(/^tg:/, '');
+    const MAX_LENGTH = 4096;
 
-      // Telegram has a 4096 character limit per message — split if needed
-      const MAX_LENGTH = 4096;
-      if (text.length <= MAX_LENGTH) {
-        await this.bot.api.sendMessage(numericId, text);
-      } else {
-        for (let i = 0; i < text.length; i += MAX_LENGTH) {
-          await this.bot.api.sendMessage(
-            numericId,
-            text.slice(i, i + MAX_LENGTH),
-          );
+    // Split on [STICKER:file_id] markers so stickers and text can be interleaved
+    const parts = text.split(/(\[STICKER:[A-Za-z0-9_-]+\])/);
+
+    for (const part of parts) {
+      const stickerMatch = part.match(/^\[STICKER:([A-Za-z0-9_-]+)\]$/);
+      if (stickerMatch) {
+        try {
+          await this.bot.api.sendSticker(numericId, stickerMatch[1]);
+          logger.info({ jid }, 'Telegram sticker sent');
+        } catch (err) {
+          logger.error({ jid, err }, 'Failed to send Telegram sticker');
         }
+        continue;
       }
-      logger.info({ jid, length: text.length }, 'Telegram message sent');
-    } catch (err) {
-      logger.error({ jid, err }, 'Failed to send Telegram message');
+
+      const trimmed = part.trim();
+      if (!trimmed) continue;
+
+      // Skip emoji-only segments — Telegram renders a lone emoji as a large
+      // animated emoji sticker, which doubles up if sent alongside a real sticker.
+      if (/^[\p{Extended_Pictographic}\u{FE0F}\u{20E3}\u{200D}\s]+$/u.test(trimmed)) continue;
+
+      try {
+        if (trimmed.length <= MAX_LENGTH) {
+          await this.bot.api.sendMessage(numericId, trimmed);
+        } else {
+          for (let i = 0; i < trimmed.length; i += MAX_LENGTH) {
+            await this.bot.api.sendMessage(
+              numericId,
+              trimmed.slice(i, i + MAX_LENGTH),
+            );
+          }
+        }
+        logger.info({ jid, length: trimmed.length }, 'Telegram message sent');
+      } catch (err) {
+        logger.error({ jid, err }, 'Failed to send Telegram message');
+      }
     }
   }
 
