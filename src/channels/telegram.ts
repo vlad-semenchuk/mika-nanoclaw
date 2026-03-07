@@ -18,6 +18,7 @@ export interface TelegramChannelOpts {
   onMessage: OnInboundMessage;
   onChatMetadata: OnChatMetadata;
   registeredGroups: () => Record<string, RegisteredGroup>;
+  onResetSession?: (jid: string) => void;
 }
 
 export class TelegramChannel implements Channel {
@@ -53,6 +54,18 @@ export class TelegramChannel implements Channel {
     // Command to check bot status
     this.bot.command('ping', (ctx) => {
       ctx.reply(`${ASSISTANT_NAME} is online.`);
+    });
+
+    // Command to reset the agent session (clears in-memory session so next run starts fresh)
+    this.bot.command('clear', async (ctx) => {
+      const jid = `tg:${ctx.chat.id}`;
+      const group = this.opts.registeredGroups()[jid];
+      if (!group) {
+        await ctx.reply('This chat is not registered.');
+        return;
+      }
+      this.opts.onResetSession?.(jid);
+      await ctx.reply('New session started.');
     });
 
     this.bot.on('message:text', async (ctx) => {
@@ -291,7 +304,7 @@ export class TelegramChannel implements Channel {
     // Start polling — returns a Promise that resolves when started
     return new Promise<void>((resolve) => {
       this.bot!.start({
-        onStart: (botInfo) => {
+        onStart: async (botInfo) => {
           logger.info(
             { username: botInfo.username, id: botInfo.id },
             'Telegram bot connected',
@@ -300,6 +313,9 @@ export class TelegramChannel implements Channel {
           console.log(
             `  Send /chatid to the bot to get a chat's registration ID\n`,
           );
+          await this.bot!.api.setMyCommands([
+            { command: 'clear', description: 'Start a new session' },
+          ]);
           resolve();
         },
       });

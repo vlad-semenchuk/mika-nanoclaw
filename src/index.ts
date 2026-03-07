@@ -492,6 +492,12 @@ async function main(): Promise<void> {
       isGroup?: boolean,
     ) => storeChatMetadata(chatJid, timestamp, name, channel, isGroup),
     registeredGroups: () => registeredGroups,
+    onResetSession: (jid: string) => {
+      const group = registeredGroups[jid];
+      if (!group) return;
+      delete sessions[group.folder];
+      logger.info({ jid, folder: group.folder }, 'Session reset via /clear');
+    },
   };
 
   // Create and connect all registered channels.

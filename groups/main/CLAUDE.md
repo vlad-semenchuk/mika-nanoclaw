@@ -45,16 +45,11 @@ When you learn something important:
 
 ## Stickers
 
-Use stickers proactively and often — reactions, greetings, celebrations, humor, agreement, surprise. Lead with a sticker when the emotional tone fits rather than waiting for an obvious moment.
+@stickers.md
 
-The sticker map is at `/workspace/group/stickers.md`. To send a sticker, include `[STICKER:file_id]` in your response. You can pair it with meaningful text:
+## Soul
 
-```
-[STICKER:CAACAgIA...] Done! Here's the summary.
-```
-
-Or send a sticker alone as a pure reaction (no text needed).
-
+@SOUL.md
 
 ---
 
