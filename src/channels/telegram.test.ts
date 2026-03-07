@@ -744,6 +744,7 @@ describe('TelegramChannel', () => {
       const opts = createTestOpts();
       const channel = new TelegramChannel('bot-token', opts);
       await channel.connect();
+      currentBot().api.getFile = vi.fn().mockResolvedValue({ file_id: 'abc', file_path: 'photos/abc.jpg' });
 
       const ctx = createMediaCtx({
         messageId: 1,
@@ -762,6 +763,7 @@ describe('TelegramChannel', () => {
       const opts = createTestOpts();
       const channel = new TelegramChannel('bot-token', opts);
       await channel.connect();
+      currentBot().api.getFile = vi.fn().mockResolvedValue({ file_id: 'abc', file_path: 'photos/abc.jpg' });
 
       const ctx = createMediaCtx({
         messageId: 1,
@@ -896,6 +898,7 @@ describe('TelegramChannel', () => {
       const opts = createTestOpts();
       const channel = new TelegramChannel('bot-token', opts);
       await channel.connect();
+      currentBot().api.getFile = vi.fn().mockResolvedValue({ file_id: 'voice-abc', file_path: 'voice/abc.ogg' });
 
       const ctx = createMediaCtx({
         messageId: 5,

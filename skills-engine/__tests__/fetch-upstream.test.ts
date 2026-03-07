@@ -45,21 +45,15 @@ describe('fetch-upstream.sh', () => {
       cwd: seedDir,
       stdio: 'pipe',
     });
-    execSync('git push origin main 2>/dev/null || git push origin master', {
+    // Push HEAD as main regardless of local branch name, so bare repo always has main
+    execSync('git push origin HEAD:main', {
       cwd: seedDir,
       stdio: 'pipe',
-      shell: '/bin/bash',
     });
-
-    // Rename the default branch to main in the bare repo if needed
-    try {
-      execSync('git symbolic-ref HEAD refs/heads/main', {
-        cwd: upstreamBareDir,
-        stdio: 'pipe',
-      });
-    } catch {
-      // Already on main
-    }
+    execSync('git symbolic-ref HEAD refs/heads/main', {
+      cwd: upstreamBareDir,
+      stdio: 'pipe',
+    });
 
     fs.rmSync(seedDir, { recursive: true, force: true });
 

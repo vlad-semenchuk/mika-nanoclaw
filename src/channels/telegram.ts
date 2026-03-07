@@ -3,7 +3,8 @@ import path from 'path';
 
 import { Bot } from 'grammy';
 
-import { ASSISTANT_NAME, GROUPS_DIR, TRIGGER_PATTERN } from '../config.js';
+import { ASSISTANT_NAME, GROUPS_DIR, TELEGRAM_BOT_TOKEN, TRIGGER_PATTERN } from '../config.js';
+import { registerChannel } from './registry.js';
 import { logger } from '../logger.js';
 import { transcribeBuffer } from '../transcription.js';
 import {
@@ -380,3 +381,10 @@ export class TelegramChannel implements Channel {
     }
   }
 }
+
+// Self-register with the channel registry.
+// Returns null when TELEGRAM_BOT_TOKEN is not configured, so the channel is skipped.
+registerChannel('telegram', (opts) => {
+  if (!TELEGRAM_BOT_TOKEN) return null;
+  return new TelegramChannel(TELEGRAM_BOT_TOKEN, opts);
+});
