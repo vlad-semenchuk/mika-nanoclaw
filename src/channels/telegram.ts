@@ -27,6 +27,7 @@ export class TelegramChannel implements Channel {
   private bot: Bot | null = null;
   private opts: TelegramChannelOpts;
   private botToken: string;
+  private typingIntervals = new Map<string, NodeJS.Timeout>();
 
   constructor(botToken: string, opts: TelegramChannelOpts) {
     this.botToken = botToken;
@@ -383,18 +384,54 @@ export class TelegramChannel implements Channel {
     if (this.bot) {
       this.bot.stop();
       this.bot = null;
+      // Clear all active typing intervals so they don't fire against a null/new bot
+      for (const timer of this.typingIntervals.values()) clearInterval(timer);
+      this.typingIntervals.clear();
       logger.info('Telegram bot stopped');
     }
   }
 
+  // Max duration for the typing indicator — safety net in case setTyping(false) is missed
+  private static readonly TYPING_MAX_MS = 120_000; // 2 minutes
+
   async setTyping(jid: string, isTyping: boolean): Promise<void> {
-    if (!this.bot || !isTyping) return;
-    try {
-      const numericId = jid.replace(/^tg:/, '');
-      await this.bot.api.sendChatAction(numericId, 'typing');
-    } catch (err) {
-      logger.debug({ jid, err }, 'Failed to send Telegram typing indicator');
+    if (!this.bot) return;
+
+    // Always clear any existing interval for this jid
+    const existing = this.typingIntervals.get(jid);
+    if (existing) {
+      clearInterval(existing);
+      this.typingIntervals.delete(jid);
     }
+
+    if (!isTyping) return;
+
+    const numericId = jid.replace(/^tg:/, '');
+    const sendTyping = async () => {
+      if (!this.bot) return; // bot may have disconnected while interval was pending
+      try {
+        await this.bot.api.sendChatAction(numericId, 'typing');
+      } catch (err) {
+        logger.debug({ jid, err }, 'Failed to send Telegram typing indicator');
+      }
+    };
+
+    // Register the interval BEFORE any await to prevent a race condition where
+    // setTyping(false) runs during the first sendTyping() await and finds nothing to clear.
+    const interval = setInterval(sendTyping, 4000);
+    this.typingIntervals.set(jid, interval);
+
+    // Safety net: auto-stop after TYPING_MAX_MS regardless of caller
+    setTimeout(() => {
+      if (this.typingIntervals.get(jid) === interval) {
+        clearInterval(interval);
+        this.typingIntervals.delete(jid);
+        logger.debug({ jid }, 'Typing indicator auto-stopped after max duration');
+      }
+    }, TelegramChannel.TYPING_MAX_MS);
+
+    // Fire the first send immediately (non-blocking — interval handles the rest)
+    sendTyping();
   }
 }
 

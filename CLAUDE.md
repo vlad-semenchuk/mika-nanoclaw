@@ -32,6 +32,12 @@ Single Node.js process that connects to WhatsApp, routes messages to Claude Agen
 | `/qodo-pr-resolver` | Fetch and fix Qodo PR review issues interactively or in batch |
 | `/get-qodo-rules` | Load org- and repo-level coding rules from Qodo before code tasks |
 
+## Workflow
+
+Always discuss the approach with the user before editing any code. Explain the plan, get confirmation, then implement.
+
+After completing any code change, always run `npm run build` first, then restart Mika using `launchctl kickstart -k gui/$(id -u)/com.nanoclaw` and confirm it came back up. The service runs compiled JS from `dist/` — skipping the build means changes have no effect.
+
 ## Git
 
 Never include `Co-Authored-By:` trailers in commit messages.

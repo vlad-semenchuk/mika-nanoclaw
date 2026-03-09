@@ -212,6 +212,11 @@ async function processGroupMessages(chatJid: string): Promise<boolean> {
       resetIdleTimer();
     }
 
+    if (result.status === 'success') {
+      // Stop typing immediately — don't wait for runAgent to resolve (IDLE_TIMEOUT = 30 min)
+      await channel.setTyping?.(chatJid, false);
+    }
+
     if (result.status === 'error') {
       hadError = true;
     }

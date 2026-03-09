@@ -53,15 +53,16 @@ When you learn something important:
 
 ---
 
-## WhatsApp Formatting (and other messaging apps)
+## Telegram Formatting
 
-Do NOT use markdown headings (##) in WhatsApp messages. Only use:
+Telegram uses legacy Markdown mode. Use:
 - *Bold* (single asterisks) (NEVER **double asterisks**)
 - _Italic_ (underscores)
 - • Bullets (bullet points)
+- `Inline code` (single backticks)
 - ```Code blocks``` (triple backticks)
 
-Keep messages clean and readable for WhatsApp.
+Keep messages clean and readable for Telegram.
 
 ---
 
@@ -105,7 +106,7 @@ Available groups are provided in `/workspace/ipc/available_groups.json`:
 }
 ```
 
-Groups are ordered by most recent activity. The list is synced from WhatsApp daily.
+Groups are ordered by most recent activity. The list is synced from Telegram daily.
 
 If a group the user mentions isn't in the list, request a fresh sync:
 
@@ -143,7 +144,7 @@ Groups are registered in `/workspace/project/data/registered_groups.json`:
 ```
 
 Fields:
-- **Key**: The WhatsApp JID (unique identifier for the chat)
+- **Key**: The chat JID (unique identifier for the chat)
 - **name**: Display name for the group
 - **folder**: Folder name under `groups/` for this group's files and memory
 - **trigger**: The trigger word (usually same as global, but could differ)
