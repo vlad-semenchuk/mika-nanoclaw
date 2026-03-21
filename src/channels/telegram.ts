@@ -1,11 +1,7 @@
-import fs from 'fs';
-import path from 'path';
-
 import { Bot } from 'grammy';
 
-import { ASSISTANT_NAME, GROUPS_DIR, TELEGRAM_BOT_TOKEN, TRIGGER_PATTERN } from '../config.js';
+import { ASSISTANT_NAME, TRIGGER_PATTERN } from '../config.js';
 import { logger } from '../logger.js';
-import { transcribeBuffer } from '../transcription.js';
 import {
   Channel,
   OnChatMetadata,
@@ -17,7 +13,6 @@ export interface TelegramChannelOpts {
   onMessage: OnInboundMessage;
   onChatMetadata: OnChatMetadata;
   registeredGroups: () => Record<string, RegisteredGroup>;
-  onResetSession?: (jid: string) => void;
 }
 
 export class TelegramChannel implements Channel {
@@ -26,7 +21,6 @@ export class TelegramChannel implements Channel {
   private bot: Bot | null = null;
   private opts: TelegramChannelOpts;
   private botToken: string;
-  private typingIntervals = new Map<string, NodeJS.Timeout>();
 
   constructor(botToken: string, opts: TelegramChannelOpts) {
     this.botToken = botToken;
@@ -54,18 +48,6 @@ export class TelegramChannel implements Channel {
     // Command to check bot status
     this.bot.command('ping', (ctx) => {
       ctx.reply(`${ASSISTANT_NAME} is online.`);
-    });
-
-    // Command to reset the agent session (clears in-memory session so next run starts fresh)
-    this.bot.command('clear', async (ctx) => {
-      const jid = `tg:${ctx.chat.id}`;
-      const group = this.opts.registeredGroups()[jid];
-      if (!group) {
-        await ctx.reply('This chat is not registered.');
-        return;
-      }
-      this.opts.onResetSession?.(jid);
-      await ctx.reply('New session started.');
     });
 
     this.bot.on('message:text', async (ctx) => {
@@ -165,125 +147,11 @@ export class TelegramChannel implements Channel {
       });
     };
 
-    this.bot.on('message:photo', async (ctx) => {
-      const chatJid = `tg:${ctx.chat.id}`;
-      const group = this.opts.registeredGroups()[chatJid];
-      if (!group) return;
-
-      const timestamp = new Date(ctx.message.date * 1000).toISOString();
-      const senderName =
-        ctx.from?.first_name ||
-        ctx.from?.username ||
-        ctx.from?.id?.toString() ||
-        'Unknown';
-      const caption = ctx.message.caption ? ` ${ctx.message.caption}` : '';
-      const msgId = ctx.message.message_id.toString();
-
-      const photos = ctx.message.photo;
-      const largestPhoto = photos?.[photos.length - 1];
-      let content: string;
-
-      if (largestPhoto) {
-        try {
-          const file = await ctx.api.getFile(largestPhoto.file_id);
-          if (file.file_path) {
-            const imagesDir = path.join(GROUPS_DIR, group.folder, 'images');
-            fs.mkdirSync(imagesDir, { recursive: true });
-            const ext = path.extname(file.file_path) || '.jpg';
-            const filename = `${msgId}${ext}`;
-            const localPath = path.join(imagesDir, filename);
-
-            const url = `https://api.telegram.org/file/bot${this.botToken}/${file.file_path}`;
-            const response = await fetch(url);
-            if (!response.ok) throw new Error(`HTTP ${response.status}`);
-            fs.writeFileSync(localPath, Buffer.from(await response.arrayBuffer()));
-
-            content = `[Photo: /workspace/group/images/${filename}]${caption}`;
-          } else {
-            content = `[Photo]${caption}`;
-          }
-        } catch (err) {
-          logger.error({ err, chatJid }, 'Failed to download Telegram photo');
-          content = `[Photo]${caption}`;
-        }
-      } else {
-        content = `[Photo]${caption}`;
-      }
-
-      this.opts.onChatMetadata(chatJid, timestamp);
-      this.opts.onMessage(chatJid, {
-        id: msgId,
-        chat_jid: chatJid,
-        sender: ctx.from?.id?.toString() || '',
-        sender_name: senderName,
-        content,
-        timestamp,
-        is_from_me: false,
-      });
-
-      logger.info(
-        { chatJid, downloaded: content.includes('/workspace/') },
-        'Telegram photo stored',
-      );
-    });
-
+    this.bot.on('message:photo', (ctx) => storeNonText(ctx, '[Photo]'));
     this.bot.on('message:video', (ctx) => storeNonText(ctx, '[Video]'));
-
-    this.bot.on('message:voice', async (ctx) => {
-      const chatJid = `tg:${ctx.chat.id}`;
-      const group = this.opts.registeredGroups()[chatJid];
-      if (!group) return;
-
-      const timestamp = new Date(ctx.message.date * 1000).toISOString();
-      const senderName =
-        ctx.from?.first_name ||
-        ctx.from?.username ||
-        ctx.from?.id?.toString() ||
-        'Unknown';
-      const msgId = ctx.message.message_id.toString();
-      const voice = ctx.message.voice;
-      let content: string;
-
-      if (voice) {
-        try {
-          const file = await ctx.api.getFile(voice.file_id);
-          if (file.file_path) {
-            const url = `https://api.telegram.org/file/bot${this.botToken}/${file.file_path}`;
-            const response = await fetch(url);
-            if (!response.ok) throw new Error(`HTTP ${response.status}`);
-            const buffer = Buffer.from(await response.arrayBuffer());
-            const rawExt = path.extname(file.file_path) || '.ogg';
-            // Normalize .oga → .ogg; Groq/OpenAI API doesn't accept .oga
-            const ext = rawExt === '.oga' ? '.ogg' : rawExt;
-            const transcript = await transcribeBuffer(buffer, `voice${ext}`);
-            content = transcript ? `[Voice: ${transcript}]` : '[Voice message]';
-          } else {
-            content = '[Voice message]';
-          }
-        } catch (err) {
-          logger.error({ err, chatJid }, 'Failed to transcribe Telegram voice message');
-          content = '[Voice message]';
-        }
-      } else {
-        content = '[Voice message]';
-      }
-
-      this.opts.onChatMetadata(chatJid, timestamp);
-      this.opts.onMessage(chatJid, {
-        id: msgId,
-        chat_jid: chatJid,
-        sender: ctx.from?.id?.toString() || '',
-        sender_name: senderName,
-        content,
-        timestamp,
-        is_from_me: false,
-      });
-
-      logger.info(
-        { chatJid, transcribed: content.startsWith('[Voice:') },
-        'Telegram voice message stored',
-      );
-    });
+    this.bot.on('message:voice', (ctx) =>
+      storeNonText(ctx, '[Voice message]'),
+    );
     this.bot.on('message:audio', (ctx) => storeNonText(ctx, '[Audio]'));
     this.bot.on('message:document', (ctx) => {
       const name = ctx.message.document?.file_name || 'file';
@@ -304,7 +172,7 @@ export class TelegramChannel implements Channel {
     // Start polling — returns a Promise that resolves when started
     return new Promise<void>((resolve) => {
       this.bot!.start({
-        onStart: async (botInfo) => {
+        onStart: (botInfo) => {
           logger.info(
             { username: botInfo.username, id: botInfo.id },
             'Telegram bot connected',
@@ -313,9 +181,6 @@ export class TelegramChannel implements Channel {
           console.log(
             `  Send /chatid to the bot to get a chat's registration ID\n`,
           );
-          await this.bot!.api.setMyCommands([
-            { command: 'clear', description: 'Start a new session' },
-          ]);
           resolve();
         },
       });
@@ -383,53 +248,17 @@ export class TelegramChannel implements Channel {
     if (this.bot) {
       this.bot.stop();
       this.bot = null;
-      // Clear all active typing intervals so they don't fire against a null/new bot
-      for (const timer of this.typingIntervals.values()) clearInterval(timer);
-      this.typingIntervals.clear();
       logger.info('Telegram bot stopped');
     }
   }
 
-  // Max duration for the typing indicator — safety net in case setTyping(false) is missed
-  private static readonly TYPING_MAX_MS = 120_000; // 2 minutes
-
   async setTyping(jid: string, isTyping: boolean): Promise<void> {
-    if (!this.bot) return;
-
-    // Always clear any existing interval for this jid
-    const existing = this.typingIntervals.get(jid);
-    if (existing) {
-      clearInterval(existing);
-      this.typingIntervals.delete(jid);
+    if (!this.bot || !isTyping) return;
+    try {
+      const numericId = jid.replace(/^tg:/, '');
+      await this.bot.api.sendChatAction(numericId, 'typing');
+    } catch (err) {
+      logger.debug({ jid, err }, 'Failed to send Telegram typing indicator');
     }
-
-    if (!isTyping) return;
-
-    const numericId = jid.replace(/^tg:/, '');
-    const sendTyping = async () => {
-      if (!this.bot) return; // bot may have disconnected while interval was pending
-      try {
-        await this.bot.api.sendChatAction(numericId, 'typing');
-      } catch (err) {
-        logger.debug({ jid, err }, 'Failed to send Telegram typing indicator');
-      }
-    };
-
-    // Register the interval BEFORE any await to prevent a race condition where
-    // setTyping(false) runs during the first sendTyping() await and finds nothing to clear.
-    const interval = setInterval(sendTyping, 4000);
-    this.typingIntervals.set(jid, interval);
-
-    // Safety net: auto-stop after TYPING_MAX_MS regardless of caller
-    setTimeout(() => {
-      if (this.typingIntervals.get(jid) === interval) {
-        clearInterval(interval);
-        this.typingIntervals.delete(jid);
-        logger.debug({ jid }, 'Typing indicator auto-stopped after max duration');
-      }
-    }, TelegramChannel.TYPING_MAX_MS);
-
-    // Fire the first send immediately (non-blocking — interval handles the rest)
-    sendTyping();
   }
 }
