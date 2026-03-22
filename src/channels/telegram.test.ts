@@ -19,11 +19,6 @@ vi.mock('../logger.js', () => ({
   },
 }));
 
-// Mock transcription (prevents real API calls during transition)
-vi.mock('../transcription.js', () => ({
-  transcribeBuffer: vi.fn().mockResolvedValue(null),
-}));
-
 // Spy on fs methods used by downloadTelegramMedia
 import fs from 'fs';
 vi.spyOn(fs, 'mkdirSync').mockReturnValue(undefined);

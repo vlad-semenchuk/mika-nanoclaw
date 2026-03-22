@@ -287,7 +287,7 @@ export class TelegramChannel implements Channel {
 
     // Register download-based media handlers
     for (const [filter, config] of Object.entries(MEDIA_TYPES)) {
-      this.bot.on(filter, async (ctx: any) => {
+      (this.bot as any).on(filter, async (ctx: any) => {
         const chatJid = `tg:${ctx.chat.id}`;
         const group = this.opts.registeredGroups()[chatJid];
         if (!group) return;

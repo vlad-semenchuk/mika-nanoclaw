@@ -20,9 +20,9 @@ vi.mock('./config.js', () => ({
 }));
 
 // Mock env file reader
-const mockReadEnvFile = vi.fn(() => ({}));
+const mockReadEnvFile = vi.fn((_keys: string[]) => ({} as Record<string, string>));
 vi.mock('./env.js', () => ({
-  readEnvFile: (...args: any[]) => mockReadEnvFile(...args),
+  readEnvFile: (keys: string[]) => mockReadEnvFile(keys),
 }));
 
 // Mock logger
@@ -252,7 +252,7 @@ describe('container env forwarding', () => {
 
   it('falls back to .env file when process.env is not set', async () => {
     delete process.env.GROQ_API_KEY;
-    mockReadEnvFile.mockImplementation((keys: string[]) => {
+    mockReadEnvFile.mockImplementation((keys: string[]): Record<string, string> => {
       if (keys.includes('GROQ_API_KEY')) {
         return { GROQ_API_KEY: 'dotenv-groq-key' };
       }
