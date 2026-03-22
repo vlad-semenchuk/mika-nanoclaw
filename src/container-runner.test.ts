@@ -16,6 +16,13 @@ vi.mock('./config.js', () => ({
   GROUPS_DIR: '/tmp/nanoclaw-test-groups',
   IDLE_TIMEOUT: 1800000, // 30min
   TIMEZONE: 'America/Los_Angeles',
+  CONTAINER_ENV_FORWARD: ['GROQ_API_KEY', 'OPENAI_API_KEY'],
+}));
+
+// Mock env file reader
+const mockReadEnvFile = vi.fn(() => ({}));
+vi.mock('./env.js', () => ({
+  readEnvFile: (...args: any[]) => mockReadEnvFile(...args),
 }));
 
 // Mock logger
@@ -206,5 +213,89 @@ describe('container-runner timeout behavior', () => {
     const result = await resultPromise;
     expect(result.status).toBe('success');
     expect(result.newSessionId).toBe('session-456');
+  });
+});
+
+describe('container env forwarding', () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+    fakeProc = createFakeProcess();
+    mockReadEnvFile.mockReset();
+    mockReadEnvFile.mockReturnValue({});
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it('forwards env vars from process.env', async () => {
+    process.env.GROQ_API_KEY = 'test-groq-key';
+
+    const resultPromise = runContainerAgent(
+      testGroup,
+      testInput,
+      () => {},
+    );
+
+    await vi.advanceTimersByTimeAsync(10);
+    fakeProc.emit('close', 0);
+    await vi.advanceTimersByTimeAsync(10);
+    await resultPromise;
+
+    const { spawn } = await import('child_process');
+    const calls = (spawn as any).mock.calls;
+    const spawnArgs = calls[calls.length - 1][1] as string[];
+    expect(spawnArgs).toContain('GROQ_API_KEY=test-groq-key');
+
+    delete process.env.GROQ_API_KEY;
+  });
+
+  it('falls back to .env file when process.env is not set', async () => {
+    delete process.env.GROQ_API_KEY;
+    mockReadEnvFile.mockImplementation((keys: string[]) => {
+      if (keys.includes('GROQ_API_KEY')) {
+        return { GROQ_API_KEY: 'dotenv-groq-key' };
+      }
+      return {};
+    });
+
+    const resultPromise = runContainerAgent(
+      testGroup,
+      testInput,
+      () => {},
+    );
+
+    await vi.advanceTimersByTimeAsync(10);
+    fakeProc.emit('close', 0);
+    await vi.advanceTimersByTimeAsync(10);
+    await resultPromise;
+
+    const { spawn } = await import('child_process');
+    const calls = (spawn as any).mock.calls;
+    const spawnArgs = calls[calls.length - 1][1] as string[];
+    expect(spawnArgs).toContain('GROQ_API_KEY=dotenv-groq-key');
+  });
+
+  it('skips env vars when not set anywhere', async () => {
+    delete process.env.GROQ_API_KEY;
+    delete process.env.OPENAI_API_KEY;
+    mockReadEnvFile.mockReturnValueOnce({});
+
+    const resultPromise = runContainerAgent(
+      testGroup,
+      testInput,
+      () => {},
+    );
+
+    await vi.advanceTimersByTimeAsync(10);
+    fakeProc.emit('close', 0);
+    await vi.advanceTimersByTimeAsync(10);
+    await resultPromise;
+
+    const { spawn } = await import('child_process');
+    const calls = (spawn as any).mock.calls;
+    const spawnArgs = calls[calls.length - 1][1] as string[];
+    expect(spawnArgs.join(' ')).not.toContain('GROQ_API_KEY');
+    expect(spawnArgs.join(' ')).not.toContain('OPENAI_API_KEY');
   });
 });

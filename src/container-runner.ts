@@ -7,6 +7,7 @@ import fs from 'fs';
 import path from 'path';
 
 import {
+  CONTAINER_ENV_FORWARD,
   CONTAINER_IMAGE,
   CONTAINER_MAX_OUTPUT_SIZE,
   CONTAINER_TIMEOUT,
@@ -16,6 +17,7 @@ import {
   IDLE_TIMEOUT,
   TIMEZONE,
 } from './config.js';
+import { readEnvFile } from './env.js';
 import { resolveGroupFolderPath, resolveGroupIpcPath } from './group-folder.js';
 import { logger } from './logger.js';
 import {
@@ -240,6 +242,16 @@ function buildContainerArgs(
 
   // Runtime-specific args for host gateway resolution
   args.push(...hostGatewayArgs());
+
+  // Forward whitelisted environment variables to the container.
+  // Dual-source: process.env first, .env file fallback (same pattern as config.ts).
+  const envFallback = readEnvFile(CONTAINER_ENV_FORWARD);
+  for (const name of CONTAINER_ENV_FORWARD) {
+    const value = process.env[name] || envFallback[name];
+    if (value) {
+      args.push('-e', `${name}=${value}`);
+    }
+  }
 
   // Run as host user so bind-mounted files are accessible.
   // Skip when running as root (uid 0), as the container's node user (uid 1000),
