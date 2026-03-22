@@ -197,10 +197,10 @@ export class TelegramChannel implements Channel {
     const MAX_LENGTH = 4096;
 
     // Split on [STICKER:file_id] markers so stickers and text can be interleaved
-    const parts = text.split(/(\[STICKER:[A-Za-z0-9_-]+\])/);
+    const parts = text.split(/(\[STICKER:[^\]]+\])/);
 
     for (const part of parts) {
-      const stickerMatch = part.match(/^\[STICKER:([A-Za-z0-9_-]+)\]$/);
+      const stickerMatch = part.match(/^\[STICKER:([^\]]+)\]$/);
       if (stickerMatch) {
         try {
           await this.bot.api.sendSticker(numericId, stickerMatch[1]);
