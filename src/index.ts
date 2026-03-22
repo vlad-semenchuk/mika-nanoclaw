@@ -8,12 +8,14 @@ import {
   DATA_DIR,
   IDLE_TIMEOUT,
   MAIN_GROUP_FOLDER,
+  METRICS_PORT,
   POLL_INTERVAL,
   TELEGRAM_BOT_TOKEN,
   TELEGRAM_ONLY,
   TIMEZONE,
   TRIGGER_PATTERN,
 } from './config.js';
+import { startMetricsServer, stopMetricsServer } from './metrics.js';
 import { TelegramChannel } from './channels/telegram.js';
 import {
   ContainerOutput,
@@ -412,11 +414,14 @@ async function main(): Promise<void> {
 
   initDatabase();
   logger.info('Database initialized');
+  startMetricsServer(METRICS_PORT);
+  logger.info({ port: METRICS_PORT }, 'Metrics server started');
   loadState();
 
   // Graceful shutdown handlers
   const shutdown = async (signal: string) => {
     logger.info({ signal }, 'Shutdown signal received');
+    await stopMetricsServer();
     await queue.shutdown(10000);
     for (const ch of channels) await ch.disconnect();
     process.exit(0);
