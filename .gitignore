@@ -34,7 +34,5 @@ groups/global/*
 # Skills system (local per-installation state)
 .nanoclaw/
 
-# GSD planning (local only)
-.planning/
 
 agents-sdk-docs
