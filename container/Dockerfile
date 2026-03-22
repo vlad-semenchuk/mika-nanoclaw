@@ -24,6 +24,7 @@ RUN apt-get update && apt-get install -y \
     libxshmfence1 \
     curl \
     git \
+    ffmpeg \
     && rm -rf /var/lib/apt/lists/*
 
 # Set Chromium path for agent-browser
@@ -38,6 +39,15 @@ COPY transcribe-media/ /opt/transcribe-media/
 RUN cd /opt/transcribe-media && npm install --omit=dev && \
     ln -s /opt/transcribe-media/transcribe-media.mjs /usr/local/bin/transcribe-media && \
     chmod +x /opt/transcribe-media/transcribe-media.mjs
+
+# Install yt-dlp standalone binary (no Python dependency)
+RUN curl -L https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp_linux -o /usr/local/bin/yt-dlp && \
+    chmod +x /usr/local/bin/yt-dlp
+
+# Install download-media script
+COPY download-media/ /opt/download-media/
+RUN ln -s /opt/download-media/download-media.sh /usr/local/bin/download-media && \
+    chmod +x /opt/download-media/download-media.sh
 
 # Create app directory
 WORKDIR /app
