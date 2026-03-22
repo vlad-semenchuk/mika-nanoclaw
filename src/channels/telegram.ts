@@ -19,6 +19,36 @@ export interface TelegramChannelOpts {
   registeredGroups: () => Record<string, RegisteredGroup>;
 }
 
+/**
+ * Extract the original sender name from a forwarded message, or undefined if
+ * the message is not forwarded.  Supports both the modern `forward_origin`
+ * (Bot API 7.0+) and the legacy `forward_from` / `forward_sender_name` fields.
+ */
+function getForwardedFrom(msg: any): string | undefined {
+  // Modern field (Bot API ≥ 7.0)
+  const origin = msg.forward_origin;
+  if (origin) {
+    switch (origin.type) {
+      case 'user':
+        return origin.sender_user?.first_name || origin.sender_user?.username || 'Unknown user';
+      case 'hidden_user':
+        return origin.sender_user_name || 'Hidden user';
+      case 'chat':
+        return origin.sender_chat?.title || 'Unknown chat';
+      case 'channel':
+        return origin.chat?.title || 'Unknown channel';
+    }
+  }
+  // Legacy fields
+  if (msg.forward_from) {
+    return msg.forward_from.first_name || msg.forward_from.username || 'Unknown user';
+  }
+  if (msg.forward_sender_name) {
+    return msg.forward_sender_name;
+  }
+  return undefined;
+}
+
 export class TelegramChannel implements Channel {
   name = 'telegram';
 
@@ -68,6 +98,12 @@ export class TelegramChannel implements Channel {
         'Unknown';
       const sender = ctx.from?.id.toString() || '';
       const msgId = ctx.message.message_id.toString();
+
+      // Mark forwarded messages so the agent knows the content isn't from the sender
+      const forwardedFrom = getForwardedFrom(ctx.message);
+      if (forwardedFrom) {
+        content = `[Forwarded from ${forwardedFrom}] ${content}`;
+      }
 
       // Determine chat name
       const chatName =
@@ -138,6 +174,8 @@ export class TelegramChannel implements Channel {
         ctx.from?.id?.toString() ||
         'Unknown';
       const caption = ctx.message.caption ? ` ${ctx.message.caption}` : '';
+      const fwd = getForwardedFrom(ctx.message);
+      const fwdPrefix = fwd ? `[Forwarded from ${fwd}] ` : '';
 
       this.opts.onChatMetadata(chatJid, timestamp);
       this.opts.onMessage(chatJid, {
@@ -145,7 +183,7 @@ export class TelegramChannel implements Channel {
         chat_jid: chatJid,
         sender: ctx.from?.id?.toString() || '',
         sender_name: senderName,
-        content: `${placeholder}${caption}`,
+        content: `${fwdPrefix}${placeholder}${caption}`,
         timestamp,
         is_from_me: false,
       });
@@ -164,6 +202,9 @@ export class TelegramChannel implements Channel {
         'Unknown';
       const caption = ctx.message.caption ? ` ${ctx.message.caption}` : '';
       const msgId = ctx.message.message_id.toString();
+
+      const fwd = getForwardedFrom(ctx.message);
+      const fwdPrefix = fwd ? `[Forwarded from ${fwd}] ` : '';
 
       const photos = ctx.message.photo;
       const largestPhoto = photos?.[photos.length - 1];
@@ -184,16 +225,16 @@ export class TelegramChannel implements Channel {
             if (!response.ok) throw new Error(`HTTP ${response.status}`);
             fs.writeFileSync(localPath, Buffer.from(await response.arrayBuffer()));
 
-            content = `[Photo: /workspace/group/images/${filename}]${caption}`;
+            content = `${fwdPrefix}[Photo: /workspace/group/images/${filename}]${caption}`;
           } else {
-            content = `[Photo]${caption}`;
+            content = `${fwdPrefix}[Photo]${caption}`;
           }
         } catch (err) {
           logger.error({ err, chatJid }, 'Failed to download Telegram photo');
-          content = `[Photo]${caption}`;
+          content = `${fwdPrefix}[Photo]${caption}`;
         }
       } else {
-        content = `[Photo]${caption}`;
+        content = `${fwdPrefix}[Photo]${caption}`;
       }
 
       this.opts.onChatMetadata(chatJid, timestamp);
@@ -225,6 +266,8 @@ export class TelegramChannel implements Channel {
         ctx.from?.id?.toString() ||
         'Unknown';
       const msgId = ctx.message.message_id.toString();
+      const fwd = getForwardedFrom(ctx.message);
+      const fwdPrefix = fwd ? `[Forwarded from ${fwd}] ` : '';
       const voice = ctx.message.voice;
       let content: string;
 
@@ -240,16 +283,16 @@ export class TelegramChannel implements Channel {
             // Normalize .oga → .ogg; Groq/OpenAI API doesn't accept .oga
             const ext = rawExt === '.oga' ? '.ogg' : rawExt;
             const transcript = await transcribeBuffer(buffer, `voice${ext}`);
-            content = transcript ? `[Voice: ${transcript}]` : '[Voice message]';
+            content = transcript ? `${fwdPrefix}[Voice: ${transcript}]` : `${fwdPrefix}[Voice message]`;
           } else {
-            content = '[Voice message]';
+            content = `${fwdPrefix}[Voice message]`;
           }
         } catch (err) {
           logger.error({ err, chatJid }, 'Failed to transcribe Telegram voice message');
-          content = '[Voice message]';
+          content = `${fwdPrefix}[Voice message]`;
         }
       } else {
-        content = '[Voice message]';
+        content = `${fwdPrefix}[Voice message]`;
       }
 
       this.opts.onChatMetadata(chatJid, timestamp);
