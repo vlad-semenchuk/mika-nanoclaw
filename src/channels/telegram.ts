@@ -197,6 +197,40 @@ export class TelegramChannel implements Channel {
       ctx.reply(`${ASSISTANT_NAME} is online.`);
     });
 
+    // Session commands — forward as regular messages so the orchestrator handles them
+    this.bot.command('compact', (ctx) => {
+      const msg = ctx.message ?? ctx.channelPost;
+      if (!msg) return;
+      const chatJid = `tg:${ctx.chat.id}`;
+      const timestamp = new Date(msg.date * 1000).toISOString();
+      const senderName =
+        ctx.from?.first_name ||
+        ctx.from?.username ||
+        ctx.from?.id.toString() ||
+        'Unknown';
+      const chatName =
+        ctx.chat.type === 'private'
+          ? senderName
+          : ('title' in ctx.chat ? ctx.chat.title : undefined) || chatJid;
+
+      this.opts.onChatMetadata(chatJid, timestamp, chatName);
+
+      const group = this.opts.registeredGroups()[chatJid];
+      if (!group) return;
+
+      this.opts.onMessage(chatJid, {
+        id: msg.message_id.toString(),
+        chat_jid: chatJid,
+        sender: ctx.from?.id.toString() || '',
+        sender_name: senderName,
+        content: '/compact',
+        timestamp,
+        is_from_me: false,
+      });
+
+      logger.info({ chatJid, chatName, sender: senderName }, 'Compacting...');
+    });
+
     this.bot.on('message:text', async (ctx) => {
       // Skip commands
       if (ctx.message.text.startsWith('/')) return;
