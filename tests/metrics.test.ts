@@ -13,7 +13,7 @@ import {
   containersActive,
   agentInvocationTotal,
   agentDurationSeconds,
-} from './metrics.js';
+} from '../src/metrics.js';
 
 function getPort(): Promise<number> {
   return new Promise((resolve, reject) => {

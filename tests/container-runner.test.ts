@@ -7,7 +7,7 @@ const OUTPUT_START_MARKER = '---NANOCLAW_OUTPUT_START---';
 const OUTPUT_END_MARKER = '---NANOCLAW_OUTPUT_END---';
 
 // Mock config
-vi.mock('./config.js', () => ({
+vi.mock('../src/config.js', () => ({
   CONTAINER_IMAGE: 'nanoclaw-agent:latest',
   CONTAINER_MAX_OUTPUT_SIZE: 10485760,
   CONTAINER_TIMEOUT: 1800000, // 30min
@@ -21,7 +21,7 @@ vi.mock('./config.js', () => ({
 }));
 
 // Mock logger
-vi.mock('./logger.js', () => ({
+vi.mock('../src/logger.js', () => ({
   logger: {
     debug: vi.fn(),
     info: vi.fn(),
@@ -49,12 +49,12 @@ vi.mock('fs', async () => {
 });
 
 // Mock mount-security
-vi.mock('./mount-security.js', () => ({
+vi.mock('../src/mount-security.js', () => ({
   validateAdditionalMounts: vi.fn(() => []),
 }));
 
 // Mock container-runtime
-vi.mock('./container-runtime.js', () => ({
+vi.mock('../src/container-runtime.js', () => ({
   CONTAINER_RUNTIME_BIN: 'docker',
   CONTAINER_HOST_GATEWAY: 'host.docker.internal',
   PROXY_BIND_HOST: '127.0.0.1',
@@ -64,7 +64,7 @@ vi.mock('./container-runtime.js', () => ({
 }));
 
 // Mock metrics
-vi.mock('./metrics.js', () => ({
+vi.mock('../src/metrics.js', () => ({
   containerSpawnTotal: { inc: vi.fn() },
   containerFailureTotal: { inc: vi.fn() },
   containerDurationSeconds: { observe: vi.fn() },
@@ -72,7 +72,7 @@ vi.mock('./metrics.js', () => ({
 }));
 
 // Mock env reader
-vi.mock('./env.js', () => ({
+vi.mock('../src/env.js', () => ({
   readEnvFile: vi.fn(() => ({})),
 }));
 
@@ -122,8 +122,8 @@ vi.mock('child_process', async () => {
   };
 });
 
-import { runContainerAgent, ContainerOutput } from './container-runner.js';
-import type { RegisteredGroup } from './types.js';
+import { runContainerAgent, ContainerOutput } from '../src/container-runner.js';
+import type { RegisteredGroup } from '../src/types.js';
 
 const testGroup: RegisteredGroup = {
   name: 'Test Group',

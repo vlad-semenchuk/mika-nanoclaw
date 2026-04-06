@@ -41,7 +41,7 @@ describe('database migrations', () => {
 
       vi.resetModules();
       const { initDatabase, getAllChats, _closeDatabase } =
-        await import('./db.js');
+        await import('../src/db.js');
 
       initDatabase();
 

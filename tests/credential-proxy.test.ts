@@ -3,11 +3,11 @@ import http from 'http';
 import type { AddressInfo } from 'net';
 
 const mockEnv: Record<string, string> = {};
-vi.mock('./env.js', () => ({
+vi.mock('../src/env.js', () => ({
   readEnvFile: vi.fn(() => ({ ...mockEnv })),
 }));
 
-vi.mock('./logger.js', () => ({
+vi.mock('../src/logger.js', () => ({
   logger: { info: vi.fn(), error: vi.fn(), debug: vi.fn(), warn: vi.fn() },
 }));
 
@@ -30,7 +30,7 @@ vi.mock('child_process', async (importOriginal) => {
   };
 });
 
-import { startCredentialProxy, _resetTokenCache } from './credential-proxy.js';
+import { startCredentialProxy, _resetTokenCache } from '../src/credential-proxy.js';
 
 function makeRequest(
   port: number,

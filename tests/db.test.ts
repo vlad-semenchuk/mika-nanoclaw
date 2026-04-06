@@ -14,8 +14,8 @@ import {
   storeChatMetadata,
   storeMessage,
   updateTask,
-} from './db.js';
-import { formatMessages } from './router.js';
+} from '../src/db.js';
+import { formatMessages } from '../src/router.js';
 
 beforeEach(() => {
   _initTestDatabase();

@@ -3,14 +3,14 @@ import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
 // --- Mocks ---
 
 // Mock config
-vi.mock('../config.js', () => ({
+vi.mock('../../src/config.js', () => ({
   ASSISTANT_NAME: 'Andy',
   TRIGGER_PATTERN: /^@Andy\b/i,
   GROUPS_DIR: '/tmp/nanoclaw-test-groups',
 }));
 
 // Mock logger
-vi.mock('../logger.js', () => ({
+vi.mock('../../src/logger.js', () => ({
   logger: {
     debug: vi.fn(),
     info: vi.fn(),
@@ -78,7 +78,7 @@ vi.mock('grammy', () => ({
   },
 }));
 
-import { TelegramChannel, TelegramChannelOpts } from './telegram.js';
+import { TelegramChannel, TelegramChannelOpts } from '../../src/../src/channels/telegram.js';
 
 // --- Test helpers ---
 
