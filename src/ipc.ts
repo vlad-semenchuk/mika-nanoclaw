@@ -46,6 +46,7 @@ export function startIpcWatcher(deps: IpcDeps): void {
         return stat.isDirectory() && f !== 'errors';
       });
     } catch (err) {
+      if (!(err instanceof Error)) throw err;
       logger.error({ err }, 'Error reading IPC base directory');
       setTimeout(processIpcFiles, IPC_POLL_INTERVAL);
       return;
@@ -95,6 +96,7 @@ export function startIpcWatcher(deps: IpcDeps): void {
               }
               fs.unlinkSync(filePath);
             } catch (err) {
+              if (!(err instanceof Error)) throw err;
               logger.error(
                 { file, sourceGroup, err },
                 'Error processing IPC message',
@@ -109,6 +111,7 @@ export function startIpcWatcher(deps: IpcDeps): void {
           }
         }
       } catch (err) {
+        if (!(err instanceof Error)) throw err;
         logger.error(
           { err, sourceGroup },
           'Error reading IPC messages directory',
@@ -129,6 +132,7 @@ export function startIpcWatcher(deps: IpcDeps): void {
               await processTaskIpc(data, sourceGroup, isMain, deps);
               fs.unlinkSync(filePath);
             } catch (err) {
+              if (!(err instanceof Error)) throw err;
               logger.error(
                 { file, sourceGroup, err },
                 'Error processing IPC task',
@@ -143,6 +147,7 @@ export function startIpcWatcher(deps: IpcDeps): void {
           }
         }
       } catch (err) {
+        if (!(err instanceof Error)) throw err;
         logger.error({ err, sourceGroup }, 'Error reading IPC tasks directory');
       }
     }
@@ -220,7 +225,8 @@ export async function processTaskIpc(
               tz: TIMEZONE,
             });
             nextRun = interval.next().toISOString();
-          } catch {
+          } catch (err) {
+            if (!(err instanceof Error)) throw err;
             logger.warn(
               { scheduleValue: data.schedule_value },
               'Invalid cron expression',
@@ -376,7 +382,8 @@ export async function processTaskIpc(
                 { tz: TIMEZONE },
               );
               updates.next_run = interval.next().toISOString();
-            } catch {
+            } catch (err) {
+              if (!(err instanceof Error)) throw err;
               logger.warn(
                 { taskId: data.taskId, value: updatedTask.schedule_value },
                 'Invalid cron in task update',

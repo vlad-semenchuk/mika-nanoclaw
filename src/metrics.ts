@@ -148,6 +148,7 @@ export function startMetricsServer(port: number, bind = '0.0.0.0'): void {
         res.writeHead(200, { 'Content-Type': registry.contentType });
         res.end(body);
       } catch (err) {
+        if (!(err instanceof Error)) throw err;
         res.writeHead(500);
         res.end('Internal Server Error');
       }

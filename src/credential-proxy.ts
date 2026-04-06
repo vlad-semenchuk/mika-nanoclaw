@@ -46,7 +46,9 @@ function readCredsJson(raw: string): { token?: string; expiresAt?: number } {
       token: creds?.claudeAiOauth?.accessToken,
       expiresAt: creds?.claudeAiOauth?.expiresAt,
     };
-  } catch {
+  } catch (err) {
+    if (!(err instanceof SyntaxError)) throw err;
+    logger.debug({ err: err.message }, 'Failed to parse credentials JSON');
     return {};
   }
 }
@@ -60,7 +62,9 @@ function readKeychainCredentials(): string | undefined {
       { timeout: 3000, encoding: 'utf-8' },
     ).trim();
     return raw || undefined;
-  } catch {
+  } catch (err) {
+    if (!(err instanceof Error)) throw err;
+    logger.debug({ err: err.message }, 'Keychain credentials not available');
     return undefined;
   }
 }
@@ -92,8 +96,9 @@ function readOAuthToken(envFallback?: string, forceRefresh = false): string | un
     const raw = fs.readFileSync(CRED_PATH, 'utf-8');
     const { token, expiresAt } = readCredsJson(raw);
     if (token) return applyToken(token, expiresAt, 'credentials file');
-  } catch {
-    // File doesn't exist — try next source
+  } catch (err) {
+    if (!(err instanceof Error)) throw err;
+    logger.debug({ err: err.message }, 'Credentials file not found, trying next source');
   }
 
   // 2. Try macOS keychain

@@ -172,7 +172,9 @@ export class GroupQueue {
       fs.writeFileSync(tempPath, JSON.stringify({ type: 'message', text }));
       fs.renameSync(tempPath, filepath);
       return true;
-    } catch {
+    // eslint-disable-next-line no-catch-all/no-catch-all
+    } catch (err) {
+      logger.debug({ groupJid, err }, 'Failed to write IPC message');
       return false;
     }
   }
@@ -188,8 +190,9 @@ export class GroupQueue {
     try {
       fs.mkdirSync(inputDir, { recursive: true });
       fs.writeFileSync(path.join(inputDir, '_close'), '');
-    } catch {
-      // ignore
+    // eslint-disable-next-line no-catch-all/no-catch-all
+    } catch (err) {
+      logger.debug({ groupJid, err }, 'Failed to write close sentinel');
     }
   }
 
@@ -218,6 +221,7 @@ export class GroupQueue {
           this.scheduleRetry(groupJid, state);
         }
       }
+    // eslint-disable-next-line no-catch-all/no-catch-all
     } catch (err) {
       logger.error({ groupJid, err }, 'Error processing messages for group');
       this.scheduleRetry(groupJid, state);
@@ -246,6 +250,7 @@ export class GroupQueue {
 
     try {
       await task.fn();
+    // eslint-disable-next-line no-catch-all/no-catch-all
     } catch (err) {
       logger.error({ groupJid, taskId: task.id, err }, 'Error running task');
     } finally {

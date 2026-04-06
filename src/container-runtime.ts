@@ -111,8 +111,9 @@ export function cleanupOrphans(): void {
     for (const name of orphans) {
       try {
         stopContainer(name);
-      } catch {
-        /* already stopped */
+      } catch (err) {
+        if (!(err instanceof Error)) throw err;
+        logger.debug({ name, err: err.message }, 'Failed to stop orphan (already stopped?)');
       }
     }
     if (orphans.length > 0) {
@@ -122,6 +123,7 @@ export function cleanupOrphans(): void {
       );
     }
   } catch (err) {
+    if (!(err instanceof Error)) throw err;
     logger.warn({ err }, 'Failed to clean up orphaned containers');
   }
 }

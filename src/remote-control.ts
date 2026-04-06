@@ -30,8 +30,9 @@ function saveState(session: RemoteControlSession): void {
 function clearState(): void {
   try {
     fs.unlinkSync(STATE_FILE);
-  } catch {
-    // ignore
+    // eslint-disable-next-line no-catch-all/no-catch-all
+  } catch (err) {
+    logger.debug({ err }, 'Failed to remove state file');
   }
 }
 
@@ -39,8 +40,9 @@ function isProcessAlive(pid: number): boolean {
   try {
     process.kill(pid, 0);
     return true;
+    // eslint-disable-next-line no-catch-all/no-catch-all
   } catch {
-    return false;
+    return false; // process not alive
   }
 }
 
@@ -52,7 +54,9 @@ export function restoreRemoteControl(): void {
   let data: string;
   try {
     data = fs.readFileSync(STATE_FILE, 'utf-8');
-  } catch {
+    // eslint-disable-next-line no-catch-all/no-catch-all
+  } catch (err) {
+    logger.debug({ err }, 'No state file to restore');
     return;
   }
 
@@ -67,7 +71,8 @@ export function restoreRemoteControl(): void {
     } else {
       clearState();
     }
-  } catch {
+  } catch (err) {
+    if (!(err instanceof SyntaxError)) throw err;
     clearState();
   }
 }
@@ -114,7 +119,8 @@ export async function startRemoteControl(
       stdio: ['pipe', stdoutFd, stderrFd],
       detached: true,
     });
-  } catch (err: any) {
+  } catch (err: unknown) {
+    if (!(err instanceof Error)) throw err;
     fs.closeSync(stdoutFd);
     fs.closeSync(stderrFd);
     return { ok: false, error: `Failed to start: ${err.message}` };
@@ -153,8 +159,9 @@ export async function startRemoteControl(
       let content = '';
       try {
         content = fs.readFileSync(STDOUT_FILE, 'utf-8');
-      } catch {
-        // File might not have content yet
+        // eslint-disable-next-line no-catch-all/no-catch-all
+      } catch (err) {
+        logger.debug({ err }, 'Stdout file not ready yet');
       }
 
       const match = content.match(URL_REGEX);
@@ -181,11 +188,14 @@ export async function startRemoteControl(
       if (Date.now() - startTime >= URL_TIMEOUT_MS) {
         try {
           process.kill(-pid, 'SIGTERM');
-        } catch {
+          // eslint-disable-next-line no-catch-all/no-catch-all
+        } catch (err) {
+          logger.debug({ pid, err }, 'Failed to kill process group, trying direct');
           try {
             process.kill(pid, 'SIGTERM');
-          } catch {
-            // already dead
+            // eslint-disable-next-line no-catch-all/no-catch-all
+          } catch (err2) {
+            logger.debug({ pid, err: err2 }, 'Process already dead');
           }
         }
         resolve({
@@ -214,8 +224,9 @@ export function stopRemoteControl():
   const { pid } = activeSession;
   try {
     process.kill(pid, 'SIGTERM');
-  } catch {
-    // already dead
+    // eslint-disable-next-line no-catch-all/no-catch-all
+  } catch (err) {
+    logger.debug({ pid, err }, 'Process already dead on stop');
   }
   activeSession = null;
   clearState();

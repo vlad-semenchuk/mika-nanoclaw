@@ -38,6 +38,7 @@ export function loadSenderAllowlist(
   let raw: string;
   try {
     raw = fs.readFileSync(filePath, 'utf-8');
+    // eslint-disable-next-line no-catch-all/no-catch-all
   } catch (err: unknown) {
     if ((err as NodeJS.ErrnoException).code === 'ENOENT') return DEFAULT_CONFIG;
     logger.warn(
@@ -50,7 +51,8 @@ export function loadSenderAllowlist(
   let parsed: unknown;
   try {
     parsed = JSON.parse(raw);
-  } catch {
+  } catch (err) {
+    if (!(err instanceof SyntaxError)) throw err;
     logger.warn({ path: filePath }, 'sender-allowlist: invalid JSON');
     return DEFAULT_CONFIG;
   }

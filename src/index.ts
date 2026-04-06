@@ -117,7 +117,8 @@ function loadState(): void {
   const agentTs = getRouterState('last_agent_timestamp');
   try {
     lastAgentTimestamp = agentTs ? JSON.parse(agentTs) : {};
-  } catch {
+  } catch (err) {
+    if (!(err instanceof SyntaxError)) throw err;
     logger.warn('Corrupted last_agent_timestamp in DB, resetting');
     lastAgentTimestamp = {};
   }
@@ -160,6 +161,7 @@ function registerGroup(jid: string, group: RegisteredGroup): void {
   try {
     groupDir = resolveGroupFolderPath(group.folder);
   } catch (err) {
+    if (!(err instanceof Error)) throw err;
     logger.warn(
       { jid, folder: group.folder, err },
       'Rejecting group registration with invalid folder',
@@ -458,6 +460,7 @@ async function runAgent(
     }
 
     return 'success';
+  // eslint-disable-next-line no-catch-all/no-catch-all -- intentional: agent errors must not crash the process
   } catch (err) {
     agentDurationSeconds.observe((Date.now() - agentStart) / 1000);
     logger.error({ group: group.name, err }, 'Agent error');
@@ -561,6 +564,7 @@ async function startMessageLoop(): Promise<void> {
           }
         }
       }
+    // eslint-disable-next-line no-catch-all/no-catch-all -- intentional: message loop must keep running
     } catch (err) {
       logger.error({ err }, 'Error in message loop');
     }
