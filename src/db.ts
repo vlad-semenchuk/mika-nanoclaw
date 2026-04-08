@@ -121,14 +121,14 @@ function createSchema(database: Database.Database): void {
     database.exec(
       `ALTER TABLE registered_groups ADD COLUMN is_main INTEGER DEFAULT 0`,
     );
-    // Backfill: existing rows with folder = 'main' are the main group
-    database.exec(
-      `UPDATE registered_groups SET is_main = 1 WHERE folder = 'main'`,
-    );
   } catch (err) {
     if (!(err instanceof Error) || !err.message.includes('duplicate column name')) throw err;
     logger.debug('Migration: is_main column already exists');
   }
+  // Backfill: existing rows with folder = 'main' are the main group
+  database.exec(
+    `UPDATE registered_groups SET is_main = 1 WHERE folder = 'main'`,
+  );
 
   // Add channel and is_group columns if they don't exist (migration for existing DBs)
   try {
