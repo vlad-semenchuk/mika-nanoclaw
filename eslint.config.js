@@ -6,7 +6,12 @@ import noCatchAll from 'eslint-plugin-no-catch-all'
 export default [
   { ignores: ['node_modules/', 'dist/', 'container/', 'groups/'] },
   { files: ['src/**/*.{js,ts}'] },
-  { languageOptions: { globals: globals.node } },
+  {
+    languageOptions: {
+      globals: globals.node,
+      parserOptions: { tsconfigRootDir: import.meta.dirname },
+    },
+  },
   pluginJs.configs.recommended,
   ...tseslint.configs.recommended,
   {
