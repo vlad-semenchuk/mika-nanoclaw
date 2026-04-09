@@ -19,10 +19,10 @@ vi.mock('../../src/logger.js', () => ({
   },
 }));
 
-// Spy on fs methods used by downloadTelegramMedia
-import fs from 'fs';
-vi.spyOn(fs, 'mkdirSync').mockReturnValue(undefined);
-vi.spyOn(fs, 'writeFileSync').mockReturnValue(undefined);
+// Spy on fs/promises methods used by downloadTelegramMedia
+import fs from 'fs/promises';
+vi.spyOn(fs, 'mkdir').mockResolvedValue(undefined);
+vi.spyOn(fs, 'writeFile').mockResolvedValue(undefined);
 
 // Mock fetch
 const fetchMock = vi.fn().mockResolvedValue({
@@ -49,6 +49,7 @@ vi.mock('grammy', () => ({
       sendChatAction: vi.fn().mockResolvedValue(undefined),
       getFile: vi.fn().mockResolvedValue({ file_path: 'photos/file_0.jpg' }),
       sendSticker: vi.fn().mockResolvedValue(undefined),
+      setMyCommands: vi.fn().mockResolvedValue(undefined),
     };
 
     constructor(token: string) {
@@ -78,7 +79,7 @@ vi.mock('grammy', () => ({
   },
 }));
 
-import { TelegramChannel, TelegramChannelOpts } from '../../src/../src/channels/telegram.js';
+import { TelegramChannel, TelegramChannelOpts } from '../../src/channels/telegram.js';
 
 // --- Test helpers ---
 
