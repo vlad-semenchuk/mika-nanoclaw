@@ -120,4 +120,5 @@ export const METRICS_BIND = process.env.METRICS_BIND || '0.0.0.0';
 export const CONTAINER_ENV_FORWARD: string[] = [
   'GROQ_API_KEY',
   'OPENAI_API_KEY',
+  'PARALLEL_API_KEY',
 ];

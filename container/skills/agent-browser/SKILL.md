@@ -1,7 +1,7 @@
 ---
 name: agent-browser
-description: Browse the web for any task — research topics, read articles, interact with web apps, fill forms, take screenshots, extract data, and test web pages. Use whenever a browser would be useful, not just when the user explicitly asks.
-allowed-tools: Bash(agent-browser:*)
+description: Browse the web for any task — research topics, read articles, interact with web apps, fill forms, take screenshots, extract data, and test web pages. Use whenever a browser would be useful, not just when the user explicitly asks. For deep multi-source research, use Parallel AI deep research.
+allowed-tools: Bash(agent-browser:*), mcp__parallel-task__*
 ---
 
 # Browser Automation with agent-browser
@@ -157,3 +157,34 @@ agent-browser get text @e1  # Get product title
 agent-browser get attr @e2 href  # Get link URL
 agent-browser screenshot products.png
 ```
+
+## Deep Research (Parallel AI)
+
+For comprehensive, multi-source research that goes beyond what a single web search or page visit can provide, use Parallel AI's deep research tool.
+
+### When to use
+
+- User asks to "research", "analyze", or "explain in depth" a complex topic
+- Question requires synthesizing multiple sources, comparisons, or historical analysis
+- A quick `WebSearch` or `agent-browser` visit isn't enough
+
+**For simple lookups, current events, or quick facts — use `WebSearch` or `agent-browser` instead.**
+
+### How to use
+
+**Always ask permission first** — deep research takes 1-20 minutes and costs more:
+
+```
+I can run deep research on [topic] using Parallel AI. This will take a few minutes and produce a comprehensive report with citations. Should I proceed?
+```
+
+**After permission — DO NOT BLOCK. Use the scheduler:**
+
+1. Create the task: `mcp__parallel-task__create_task_run`
+2. Get the `run_id` from the response
+3. Schedule a polling task via `mcp__nanoclaw__schedule_task`:
+   - **Prompt:** "Check Parallel AI task run [run_id]. If completed, send results via `mcp__nanoclaw__send_message` and call `mcp__nanoclaw__complete_scheduled_task`. If still running/pending, do nothing."
+   - **Schedule:** interval every 30 seconds
+   - **Context mode:** isolated
+4. Acknowledge to the user that research is underway
+5. Exit immediately — the scheduler delivers results when ready
