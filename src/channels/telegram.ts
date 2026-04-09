@@ -78,6 +78,16 @@ export function getSenderName(from?: { first_name?: string; username?: string; i
   return from?.first_name || from?.username || from?.id?.toString() || 'Unknown';
 }
 
+function getReplyFields(msg: Message) {
+  const reply = msg.reply_to_message;
+  if (!reply) return {};
+  return {
+    reply_to_message_id: reply.message_id.toString(),
+    reply_to_sender_name: getSenderName(reply.from),
+    reply_to_message_content: reply.text || reply.caption || '',
+  };
+}
+
 export function getForwardedPrefix(msg: ForwardableMessage): string {
   const name = getForwardedFrom(msg);
   return name ? `[Forwarded from ${name}] ` : '';
@@ -269,6 +279,7 @@ export class TelegramChannel implements Channel {
         content,
         timestamp,
         is_from_me: false,
+        ...getReplyFields(ctx.message),
       });
 
       logger.info(
@@ -295,6 +306,7 @@ export class TelegramChannel implements Channel {
         content: `${getForwardedPrefix(ctx.message)}${placeholder}${caption}`,
         timestamp,
         is_from_me: false,
+        ...getReplyFields(ctx.message),
       });
     };
 
@@ -337,6 +349,7 @@ export class TelegramChannel implements Channel {
           content,
           timestamp,
           is_from_me: false,
+          ...getReplyFields(ctx.message),
         });
 
         logger.info(
@@ -422,12 +435,13 @@ export class TelegramChannel implements Channel {
 
       try {
         if (trimmed.length <= MAX_LENGTH) {
-          await this.bot.api.sendMessage(numericId, trimmed);
+          await this.bot.api.sendMessage(numericId, trimmed, { parse_mode: 'HTML' });
         } else {
           for (let i = 0; i < trimmed.length; i += MAX_LENGTH) {
             await this.bot.api.sendMessage(
               numericId,
               trimmed.slice(i, i + MAX_LENGTH),
+              { parse_mode: 'HTML' },
             );
           }
         }

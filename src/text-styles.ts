@@ -26,6 +26,17 @@ export function parseTextStyles(text: string, channel: ChannelType): string {
   // Discord is already Markdown; Signal uses parseSignalStyles() for rich text.
   if (channel === 'discord' || channel === 'signal') return text;
 
+  // Telegram uses parse_mode: 'HTML' — convert markdown markers to HTML tags.
+  // The agent may already output HTML, so we must NOT escape existing tags.
+  if (channel === 'telegram') {
+    const segments = splitProtectedRegions(text);
+    return segments
+      .map(({ content, protected: isProtected }) =>
+        isProtected ? transformCodeForHtml(content) : transformSegmentTelegram(content),
+      )
+      .join('');
+  }
+
   // Split into protected (code) and unprotected regions, transform only the latter.
   const segments = splitProtectedRegions(text);
   return segments
@@ -331,6 +342,66 @@ function transformSegment(text: string, channel: ChannelType): string {
   }
 
   // 5. Horizontal rules: strip them
+  t = t.replace(/^(-{3,}|\*{3,}|_{3,})$/gm, '');
+
+  return t;
+}
+
+// ---------------------------------------------------------------------------
+// Telegram HTML helpers
+// ---------------------------------------------------------------------------
+
+function escapeHtml(text: string): string {
+  return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+/** Convert a fenced/inline code block to HTML <pre>/<code> tags. */
+function transformCodeForHtml(content: string): string {
+  // Fenced code block: ```lang\n...\n```
+  const fenced = content.match(/^```(\w*)\n?([\s\S]*?)```$/);
+  if (fenced) {
+    const code = escapeHtml(fenced[2]);
+    return fenced[1]
+      ? `<pre><code class="language-${fenced[1]}">${code}</code></pre>`
+      : `<pre>${code}</pre>`;
+  }
+  // Inline code: `...`
+  const inline = content.match(/^`([^`]+)`$/);
+  if (inline) return `<code>${escapeHtml(inline[1])}</code>`;
+  return escapeHtml(content);
+}
+
+/** Transform a non-code segment for Telegram (markdown → HTML, preserve existing HTML). */
+function transformSegmentTelegram(text: string): string {
+  let t = text;
+
+  // 1. Bold: **text** → <b>text</b>
+  t = t.replace(/\*\*(?=[^\s*])([^*]+?)(?<=[^\s*])\*\*/g, '<b>$1</b>');
+
+  // 2. Italic: *text* → <i>text</i>
+  t = t.replace(/(?<!\*)\*(?=[^\s*])([^*\n]+?)(?<=[^\s*])\*(?!\*)/g, '<i>$1</i>');
+
+  // 3. Italic: _text_ → <i>text</i> (only at word boundaries, skip snake_case)
+  t = t.replace(/(?<!\w)_(?=[^\s_])([^_\n]+?)(?<=[^\s_])_(?!\w)/g, '<i>$1</i>');
+
+  // 4. Strikethrough: ~~text~~ → <s>text</s>
+  t = t.replace(/~~(?=[^\s~])([^~]+?)(?<=[^\s~])~~/g, '<s>$1</s>');
+
+  // 5. Spoiler: ||text|| → <tg-spoiler>text</tg-spoiler>
+  t = t.replace(/\|\|(?=[^\s|])([^|]+?)(?<=[^\s|])\|\|/g, '<tg-spoiler>$1</tg-spoiler>');
+
+  // 6. Headings: ## Title → <b>Title</b>
+  t = t.replace(/^#{1,6}\s+(.+)$/gm, '<b>$1</b>');
+
+  // 6. Links: [text](url) → <a href="url">text</a>
+  t = t.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2">$1</a>');
+
+  // 7. Blockquotes: > text → <blockquote>text</blockquote>
+  t = t.replace(/^(?:> ?)(.+)$/gm, '<blockquote>$1</blockquote>');
+  // Merge consecutive blockquote tags
+  t = t.replace(/<\/blockquote>\n<blockquote>/g, '\n');
+
+  // 8. Horizontal rules: strip them
   t = t.replace(/^(-{3,}|\*{3,}|_{3,})$/gm, '');
 
   return t;
