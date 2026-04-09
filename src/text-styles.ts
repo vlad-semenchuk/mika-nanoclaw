@@ -32,7 +32,9 @@ export function parseTextStyles(text: string, channel: ChannelType): string {
     const segments = splitProtectedRegions(text);
     return segments
       .map(({ content, protected: isProtected }) =>
-        isProtected ? transformCodeForHtml(content) : transformSegmentTelegram(content),
+        isProtected
+          ? transformCodeForHtml(content)
+          : transformSegmentTelegram(content),
       )
       .join('');
   }
@@ -352,7 +354,10 @@ function transformSegment(text: string, channel: ChannelType): string {
 // ---------------------------------------------------------------------------
 
 function escapeHtml(text: string): string {
-  return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  return text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
 }
 
 /** Convert a fenced/inline code block to HTML <pre>/<code> tags. */
@@ -379,7 +384,10 @@ function transformSegmentTelegram(text: string): string {
   t = t.replace(/\*\*(?=[^\s*])([^*]+?)(?<=[^\s*])\*\*/g, '<b>$1</b>');
 
   // 2. Italic: *text* → <i>text</i>
-  t = t.replace(/(?<!\*)\*(?=[^\s*])([^*\n]+?)(?<=[^\s*])\*(?!\*)/g, '<i>$1</i>');
+  t = t.replace(
+    /(?<!\*)\*(?=[^\s*])([^*\n]+?)(?<=[^\s*])\*(?!\*)/g,
+    '<i>$1</i>',
+  );
 
   // 3. Italic: _text_ → <i>text</i> (only at word boundaries, skip snake_case)
   t = t.replace(/(?<!\w)_(?=[^\s_])([^_\n]+?)(?<=[^\s_])_(?!\w)/g, '<i>$1</i>');
@@ -388,7 +396,10 @@ function transformSegmentTelegram(text: string): string {
   t = t.replace(/~~(?=[^\s~])([^~]+?)(?<=[^\s~])~~/g, '<s>$1</s>');
 
   // 5. Spoiler: ||text|| → <tg-spoiler>text</tg-spoiler>
-  t = t.replace(/\|\|(?=[^\s|])([^|]+?)(?<=[^\s|])\|\|/g, '<tg-spoiler>$1</tg-spoiler>');
+  t = t.replace(
+    /\|\|(?=[^\s|])([^|]+?)(?<=[^\s|])\|\|/g,
+    '<tg-spoiler>$1</tg-spoiler>',
+  );
 
   // 6. Headings: ## Title → <b>Title</b>
   t = t.replace(/^#{1,6}\s+(.+)$/gm, '<b>$1</b>');

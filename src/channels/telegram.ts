@@ -4,9 +4,19 @@ import path from 'path';
 import { Bot, type Api, type Context, InputFile } from 'grammy';
 import type { Message } from '@grammyjs/types';
 
-import { ASSISTANT_NAME, GROUPS_DIR, TELEGRAM_BOT_TOKEN, TRIGGER_PATTERN } from '../config.js';
+import {
+  ASSISTANT_NAME,
+  GROUPS_DIR,
+  TELEGRAM_BOT_TOKEN,
+  TRIGGER_PATTERN,
+} from '../config.js';
 import { logger } from '../logger.js';
-import { Channel, OnChatMetadata, OnInboundMessage, RegisteredGroup } from '../types.js';
+import {
+  Channel,
+  OnChatMetadata,
+  OnInboundMessage,
+  RegisteredGroup,
+} from '../types.js';
 import { ChannelOpts, registerChannel } from './registry.js';
 
 export interface ForwardableMessage {
@@ -31,51 +41,57 @@ export interface TelegramChannelOpts {
 }
 
 export const MEDIA_TYPES: Record<string, MediaTypeConfig> = {
-    'message:photo': {
-      label: 'Photo',
-      fallback: '[Photo]',
-      getFileId: (msg) => msg.photo?.[msg.photo.length - 1]?.file_id,
-      defaultExt: '.jpg',
-      supportsCaption: true,
-    },
-    'message:voice': {
-      label: 'Voice',
-      fallback: '[Voice message]',
-      getFileId: (msg) => msg.voice?.file_id,
-      defaultExt: '.ogg',
-    },
-    'message:video': {
-      label: 'Video',
-      fallback: '[Video]',
-      getFileId: (msg) => msg.video?.file_id,
-      defaultExt: '.mp4',
-      supportsCaption: true,
-    },
-    'message:video_note': {
-      label: 'Video note',
-      fallback: '[Video note]',
-      getFileId: (msg) => msg.video_note?.file_id,
-      defaultExt: '.mp4',
-    },
-    'message:audio': {
-      label: 'Audio',
-      fallback: '[Audio]',
-      getFileId: (msg) => msg.audio?.file_id,
-      defaultExt: '.mp3',
-      supportsCaption: true,
-    },
-    'message:document': {
-      label: 'Document',
-      fallback: '[Document]',
-      getFileId: (msg) => msg.document?.file_id,
-      defaultExt: '.bin',
-      getFilenameOverride: (msg) => msg.document?.file_name,
-      supportsCaption: true,
-    },
-  };
+  'message:photo': {
+    label: 'Photo',
+    fallback: '[Photo]',
+    getFileId: (msg) => msg.photo?.[msg.photo.length - 1]?.file_id,
+    defaultExt: '.jpg',
+    supportsCaption: true,
+  },
+  'message:voice': {
+    label: 'Voice',
+    fallback: '[Voice message]',
+    getFileId: (msg) => msg.voice?.file_id,
+    defaultExt: '.ogg',
+  },
+  'message:video': {
+    label: 'Video',
+    fallback: '[Video]',
+    getFileId: (msg) => msg.video?.file_id,
+    defaultExt: '.mp4',
+    supportsCaption: true,
+  },
+  'message:video_note': {
+    label: 'Video note',
+    fallback: '[Video note]',
+    getFileId: (msg) => msg.video_note?.file_id,
+    defaultExt: '.mp4',
+  },
+  'message:audio': {
+    label: 'Audio',
+    fallback: '[Audio]',
+    getFileId: (msg) => msg.audio?.file_id,
+    defaultExt: '.mp3',
+    supportsCaption: true,
+  },
+  'message:document': {
+    label: 'Document',
+    fallback: '[Document]',
+    getFileId: (msg) => msg.document?.file_id,
+    defaultExt: '.bin',
+    getFilenameOverride: (msg) => msg.document?.file_name,
+    supportsCaption: true,
+  },
+};
 
-export function getSenderName(from?: { first_name?: string; username?: string; id?: number }): string {
-  return from?.first_name || from?.username || from?.id?.toString() || 'Unknown';
+export function getSenderName(from?: {
+  first_name?: string;
+  username?: string;
+  id?: number;
+}): string {
+  return (
+    from?.first_name || from?.username || from?.id?.toString() || 'Unknown'
+  );
 }
 
 function getReplyFields(msg: Message) {
@@ -107,7 +123,11 @@ function getForwardedFrom(msg: ForwardableMessage): string | undefined {
   if (origin) {
     switch (origin.type) {
       case 'user':
-        return origin.sender_user?.first_name || origin.sender_user?.username || 'Unknown user';
+        return (
+          origin.sender_user?.first_name ||
+          origin.sender_user?.username ||
+          'Unknown user'
+        );
       case 'hidden_user':
         return origin.sender_user_name || 'Hidden user';
       case 'chat':
@@ -117,7 +137,9 @@ function getForwardedFrom(msg: ForwardableMessage): string | undefined {
     }
   }
   if (msg.forward_from) {
-    return msg.forward_from.first_name || msg.forward_from.username || 'Unknown user';
+    return (
+      msg.forward_from.first_name || msg.forward_from.username || 'Unknown user'
+    );
   }
   if (msg.forward_sender_name) {
     return msg.forward_sender_name;
@@ -288,7 +310,13 @@ export class TelegramChannel implements Channel {
       );
     });
 
-    const storeNonText = (ctx: Context & { chat: NonNullable<Context['chat']>; message: NonNullable<Context['message']> }, placeholder: string) => {
+    const storeNonText = (
+      ctx: Context & {
+        chat: NonNullable<Context['chat']>;
+        message: NonNullable<Context['message']>;
+      },
+      placeholder: string,
+    ) => {
       const chatJid = `tg:${ctx.chat.id}`;
       const group = this.opts.registeredGroups()[chatJid];
       if (!group) return;
@@ -318,9 +346,10 @@ export class TelegramChannel implements Channel {
 
         const timestamp = new Date(ctx.message.date * 1000).toISOString();
         const senderName = getSenderName(ctx.from);
-        const caption = config.supportsCaption && ctx.message.caption
-          ? ` ${ctx.message.caption}`
-          : '';
+        const caption =
+          config.supportsCaption && ctx.message.caption
+            ? ` ${ctx.message.caption}`
+            : '';
         const msgId = ctx.message.message_id.toString();
         const fwdPrefix = getForwardedPrefix(ctx.message);
 
@@ -330,8 +359,13 @@ export class TelegramChannel implements Channel {
         if (fileId) {
           const filenameOverride = config.getFilenameOverride?.(ctx.message);
           const workspacePath = await downloadTelegramMedia(
-            this.botToken, ctx.api, fileId,
-            group.folder, msgId, config.defaultExt, filenameOverride,
+            this.botToken,
+            ctx.api,
+            fileId,
+            group.folder,
+            msgId,
+            config.defaultExt,
+            filenameOverride,
           );
           content = workspacePath
             ? `${fwdPrefix}[${config.label}: ${workspacePath}]${caption}`
@@ -353,7 +387,11 @@ export class TelegramChannel implements Channel {
         });
 
         logger.info(
-          { chatJid, mediaType: config.label, downloaded: content.includes('/workspace/') },
+          {
+            chatJid,
+            mediaType: config.label,
+            downloaded: content.includes('/workspace/'),
+          },
           'Telegram media stored',
         );
       });
@@ -397,7 +435,9 @@ export class TelegramChannel implements Channel {
     const numericId = jid.replace(/^tg:/, '');
     const MAX_LENGTH = 4096;
 
-    const parts = text.split(/(\[STICKER:[^\]]+\]|\[(?:image|PHOTO|IMAGE|photo):[^\]]+\])/);
+    const parts = text.split(
+      /(\[STICKER:[^\]]+\]|\[(?:image|PHOTO|IMAGE|photo):[^\]]+\])/,
+    );
 
     for (const part of parts) {
       const stickerMatch = part.match(/^\[STICKER:([^\]]+)\]$/);
@@ -412,7 +452,9 @@ export class TelegramChannel implements Channel {
         continue;
       }
 
-      const imageMatch = part.match(/^\[(?:image|PHOTO|IMAGE|photo):([^\]]+)\]$/);
+      const imageMatch = part.match(
+        /^\[(?:image|PHOTO|IMAGE|photo):([^\]]+)\]$/,
+      );
       if (imageMatch) {
         const hostPath = this.resolveWorkspacePath(jid, imageMatch[1]);
         if (hostPath) {
@@ -421,7 +463,10 @@ export class TelegramChannel implements Channel {
             logger.info({ jid, path: hostPath }, 'Telegram photo sent');
             // eslint-disable-next-line no-catch-all/no-catch-all
           } catch (err) {
-            logger.error({ jid, path: hostPath, err }, 'Failed to send Telegram photo');
+            logger.error(
+              { jid, path: hostPath, err },
+              'Failed to send Telegram photo',
+            );
           }
         }
         continue;
@@ -431,11 +476,18 @@ export class TelegramChannel implements Channel {
       if (!trimmed) continue;
 
       // Telegram renders lone emojis as large animated stickers, doubling up with real stickers
-      if (/^[\p{Extended_Pictographic}\u{FE0F}\u{20E3}\u{200D}\s]+$/u.test(trimmed)) continue;
+      if (
+        /^[\p{Extended_Pictographic}\u{FE0F}\u{20E3}\u{200D}\s]+$/u.test(
+          trimmed,
+        )
+      )
+        continue;
 
       try {
         if (trimmed.length <= MAX_LENGTH) {
-          await this.bot.api.sendMessage(numericId, trimmed, { parse_mode: 'HTML' });
+          await this.bot.api.sendMessage(numericId, trimmed, {
+            parse_mode: 'HTML',
+          });
         } else {
           for (let i = 0; i < trimmed.length; i += MAX_LENGTH) {
             await this.bot.api.sendMessage(
@@ -453,7 +505,10 @@ export class TelegramChannel implements Channel {
     }
   }
 
-  private resolveWorkspacePath(jid: string, workspacePath: string): string | null {
+  private resolveWorkspacePath(
+    jid: string,
+    workspacePath: string,
+  ): string | null {
     const group = this.opts.registeredGroups()[jid];
     if (!group) return null;
 
@@ -515,7 +570,10 @@ export class TelegramChannel implements Channel {
       if (this.typingIntervals.get(jid) === interval) {
         clearInterval(interval);
         this.typingIntervals.delete(jid);
-        logger.debug({ jid }, 'Typing indicator auto-stopped after max duration');
+        logger.debug(
+          { jid },
+          'Typing indicator auto-stopped after max duration',
+        );
       }
     }, TelegramChannel.TYPING_MAX_MS);
 

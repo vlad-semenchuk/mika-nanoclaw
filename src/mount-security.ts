@@ -100,7 +100,7 @@ export function loadMountAllowlist(): MountAllowlist | null {
     );
 
     return cachedAllowlist;
-  // eslint-disable-next-line no-catch-all/no-catch-all
+    // eslint-disable-next-line no-catch-all/no-catch-all
   } catch (err) {
     allowlistLoadError = err instanceof Error ? err.message : String(err);
     logger.error(

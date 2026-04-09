@@ -90,7 +90,11 @@ function createSchema(database: Database.Database): void {
       `ALTER TABLE scheduled_tasks ADD COLUMN context_mode TEXT DEFAULT 'isolated'`,
     );
   } catch (err) {
-    if (!(err instanceof Error) || !err.message.includes('duplicate column name')) throw err;
+    if (
+      !(err instanceof Error) ||
+      !err.message.includes('duplicate column name')
+    )
+      throw err;
     logger.debug('Migration: context_mode column already exists');
   }
 
@@ -98,7 +102,11 @@ function createSchema(database: Database.Database): void {
   try {
     database.exec(`ALTER TABLE scheduled_tasks ADD COLUMN script TEXT`);
   } catch (err) {
-    if (!(err instanceof Error) || !err.message.includes('duplicate column name')) throw err;
+    if (
+      !(err instanceof Error) ||
+      !err.message.includes('duplicate column name')
+    )
+      throw err;
     logger.debug('Migration: script column already exists');
   }
 
@@ -112,7 +120,11 @@ function createSchema(database: Database.Database): void {
       .prepare(`UPDATE messages SET is_bot_message = 1 WHERE content LIKE ?`)
       .run(`${ASSISTANT_NAME}:%`);
   } catch (err) {
-    if (!(err instanceof Error) || !err.message.includes('duplicate column name')) throw err;
+    if (
+      !(err instanceof Error) ||
+      !err.message.includes('duplicate column name')
+    )
+      throw err;
     logger.debug('Migration: is_bot_message column already exists');
   }
 
@@ -122,7 +134,11 @@ function createSchema(database: Database.Database): void {
       `ALTER TABLE registered_groups ADD COLUMN is_main INTEGER DEFAULT 0`,
     );
   } catch (err) {
-    if (!(err instanceof Error) || !err.message.includes('duplicate column name')) throw err;
+    if (
+      !(err instanceof Error) ||
+      !err.message.includes('duplicate column name')
+    )
+      throw err;
     logger.debug('Migration: is_main column already exists');
   }
   // Backfill: existing rows with folder = 'main' are the main group
@@ -148,23 +164,27 @@ function createSchema(database: Database.Database): void {
       `UPDATE chats SET channel = 'telegram', is_group = 0 WHERE jid LIKE 'tg:%'`,
     );
   } catch (err) {
-    if (!(err instanceof Error) || !err.message.includes('duplicate column name')) throw err;
+    if (
+      !(err instanceof Error) ||
+      !err.message.includes('duplicate column name')
+    )
+      throw err;
     logger.debug('Migration: channel/is_group columns already exist');
   }
 
   // Add reply context columns if they don't exist (migration for existing DBs)
   try {
-    database.exec(
-      `ALTER TABLE messages ADD COLUMN reply_to_message_id TEXT`,
-    );
+    database.exec(`ALTER TABLE messages ADD COLUMN reply_to_message_id TEXT`);
     database.exec(
       `ALTER TABLE messages ADD COLUMN reply_to_message_content TEXT`,
     );
-    database.exec(
-      `ALTER TABLE messages ADD COLUMN reply_to_sender_name TEXT`,
-    );
+    database.exec(`ALTER TABLE messages ADD COLUMN reply_to_sender_name TEXT`);
   } catch (err) {
-    if (!(err instanceof Error) || !err.message.includes('duplicate column name')) throw err;
+    if (
+      !(err instanceof Error) ||
+      !err.message.includes('duplicate column name')
+    )
+      throw err;
     logger.debug('Migration: reply context columns already exist');
   }
 }

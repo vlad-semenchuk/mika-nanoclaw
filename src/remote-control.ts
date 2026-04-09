@@ -190,7 +190,10 @@ export async function startRemoteControl(
           process.kill(-pid, 'SIGTERM');
           // eslint-disable-next-line no-catch-all/no-catch-all
         } catch (err) {
-          logger.debug({ pid, err }, 'Failed to kill process group, trying direct');
+          logger.debug(
+            { pid, err },
+            'Failed to kill process group, trying direct',
+          );
           try {
             process.kill(pid, 'SIGTERM');
             // eslint-disable-next-line no-catch-all/no-catch-all

@@ -69,7 +69,11 @@ function readKeychainCredentials(): string | undefined {
   }
 }
 
-function applyToken(token: string, expiresAt: number | undefined, source: string): string {
+function applyToken(
+  token: string,
+  expiresAt: number | undefined,
+  source: string,
+): string {
   if (token !== lastGoodToken) {
     logger.info(
       {
@@ -86,8 +90,15 @@ function applyToken(token: string, expiresAt: number | undefined, source: string
   return token;
 }
 
-function readOAuthToken(envFallback?: string, forceRefresh = false): string | undefined {
-  if (!forceRefresh && lastGoodToken && Date.now() - lastTokenReadAt < TOKEN_TTL_MS) {
+function readOAuthToken(
+  envFallback?: string,
+  forceRefresh = false,
+): string | undefined {
+  if (
+    !forceRefresh &&
+    lastGoodToken &&
+    Date.now() - lastTokenReadAt < TOKEN_TTL_MS
+  ) {
     return lastGoodToken;
   }
 
@@ -98,7 +109,10 @@ function readOAuthToken(envFallback?: string, forceRefresh = false): string | un
     if (token) return applyToken(token, expiresAt, 'credentials file');
   } catch (err) {
     if (!(err instanceof Error)) throw err;
-    logger.debug({ err: err.message }, 'Credentials file not found, trying next source');
+    logger.debug(
+      { err: err.message },
+      'Credentials file not found, trying next source',
+    );
   }
 
   // 2. Try macOS keychain
@@ -178,7 +192,9 @@ export function startCredentialProxy(
   function tokenHint(
     headers: Record<string, string | number | string[] | undefined>,
   ): string {
-    const raw = (headers['authorization'] ?? headers['x-api-key'] ?? '') as string;
+    const raw = (headers['authorization'] ??
+      headers['x-api-key'] ??
+      '') as string;
     return String(raw).slice(0, 35) || 'none';
   }
 
@@ -209,13 +225,22 @@ export function startCredentialProxy(
                 method: reqMethod,
                 path: reqUrl,
                 tokenPrefix: tokenHint(headers),
-                tokenExpired: lastTokenExpiresAt ? Date.now() > lastTokenExpiresAt : 'unknown',
+                tokenExpired: lastTokenExpiresAt
+                  ? Date.now() > lastTokenExpiresAt
+                  : 'unknown',
                 body: errBuf.toString('utf-8').slice(0, 500),
               },
               'Proxy got 401, retrying with fresh token',
             );
             setTimeout(() => {
-              sendUpstream(reqMethod, reqUrl, origHeaders, body, res, attempt + 1);
+              sendUpstream(
+                reqMethod,
+                reqUrl,
+                origHeaders,
+                body,
+                res,
+                attempt + 1,
+              );
             }, AUTH_RETRY_DELAY_MS);
           });
           return;
@@ -230,7 +255,9 @@ export function startCredentialProxy(
                 method: reqMethod,
                 path: reqUrl,
                 tokenPrefix: tokenHint(headers),
-                tokenExpired: lastTokenExpiresAt ? Date.now() > lastTokenExpiresAt : 'unknown',
+                tokenExpired: lastTokenExpiresAt
+                  ? Date.now() > lastTokenExpiresAt
+                  : 'unknown',
                 body: errBuf.toString('utf-8').slice(0, 500),
               },
               'Proxy upstream error response',
@@ -282,4 +309,3 @@ export function startCredentialProxy(
     server.on('error', reject);
   });
 }
-

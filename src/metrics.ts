@@ -1,6 +1,12 @@
 import http from 'http';
 
-import { Counter, Gauge, Histogram, Registry, collectDefaultMetrics } from 'prom-client';
+import {
+  Counter,
+  Gauge,
+  Histogram,
+  Registry,
+  collectDefaultMetrics,
+} from 'prom-client';
 
 // Singleton registry — import this everywhere metrics are defined.
 // Never use prom-client's global `register`; always use this custom instance.

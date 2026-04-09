@@ -108,10 +108,7 @@ export const CREDENTIAL_PROXY_PORT = parseInt(
 );
 
 // Prometheus metrics
-export const METRICS_PORT = parseInt(
-  process.env.METRICS_PORT || '9091',
-  10,
-);
+export const METRICS_PORT = parseInt(process.env.METRICS_PORT || '9091', 10);
 export const METRICS_BIND = process.env.METRICS_BIND || '0.0.0.0';
 
 // Environment variables to forward to agent containers.

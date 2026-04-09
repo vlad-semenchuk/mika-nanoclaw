@@ -76,7 +76,11 @@ import {
   messageProcessingLatencySeconds,
   messageBatchSize,
 } from './metrics.js';
-import { extractSessionCommand, handleSessionCommand, isSessionCommandAllowed } from './session-commands.js';
+import {
+  extractSessionCommand,
+  handleSessionCommand,
+  isSessionCommandAllowed,
+} from './session-commands.js';
 import { startSchedulerLoop } from './task-scheduler.js';
 import { Channel, NewMessage, RegisteredGroup } from './types.js';
 import { logger } from './logger.js';
@@ -261,7 +265,10 @@ async function processGroupMessages(chatJid: string): Promise<boolean> {
   const oldestMessageTime = new Date(missedMessages[0].timestamp).getTime();
   const latencySeconds = (Date.now() - oldestMessageTime) / 1000;
   if (latencySeconds > 0) {
-    messageProcessingLatencySeconds.observe({ group: group.folder }, latencySeconds);
+    messageProcessingLatencySeconds.observe(
+      { group: group.folder },
+      latencySeconds,
+    );
   }
 
   // --- Session command interception (before trigger check) ---
@@ -272,19 +279,33 @@ async function processGroupMessages(chatJid: string): Promise<boolean> {
     triggerPattern: getTriggerPattern(group.trigger),
     timezone: TIMEZONE,
     deps: {
-      sendMessage: (text) => channel.sendMessage(chatJid, formatOutbound(text, channel.name as ChannelType)),
-      setTyping: (typing) => channel.setTyping?.(chatJid, typing) ?? Promise.resolve(),
-      runAgent: (prompt, onOutput) => runAgent(group, prompt, chatJid, onOutput),
+      sendMessage: (text) =>
+        channel.sendMessage(
+          chatJid,
+          formatOutbound(text, channel.name as ChannelType),
+        ),
+      setTyping: (typing) =>
+        channel.setTyping?.(chatJid, typing) ?? Promise.resolve(),
+      runAgent: (prompt, onOutput) =>
+        runAgent(group, prompt, chatJid, onOutput),
       closeStdin: () => queue.closeStdin(chatJid),
-      advanceCursor: (ts) => { lastAgentTimestamp[chatJid] = ts; saveState(); },
+      advanceCursor: (ts) => {
+        lastAgentTimestamp[chatJid] = ts;
+        saveState();
+      },
       formatMessages,
       canSenderInteract: (msg) => {
-        const hasTrigger = getTriggerPattern(group.trigger).test(msg.content.trim());
+        const hasTrigger = getTriggerPattern(group.trigger).test(
+          msg.content.trim(),
+        );
         const reqTrigger = !isMainGroup && group.requiresTrigger !== false;
-        return isMainGroup || !reqTrigger || (hasTrigger && (
-          msg.is_from_me ||
-          isTriggerAllowed(chatJid, msg.sender, loadSenderAllowlist())
-        ));
+        return (
+          isMainGroup ||
+          !reqTrigger ||
+          (hasTrigger &&
+            (msg.is_from_me ||
+              isTriggerAllowed(chatJid, msg.sender, loadSenderAllowlist())))
+        );
       },
     },
   });
@@ -345,8 +366,12 @@ async function processGroupMessages(chatJid: string): Promise<boolean> {
           ? result.result
           : JSON.stringify(result.result);
       // Strip <internal>...</internal> blocks — agent uses these for internal reasoning
-      const stripped = raw.replace(/<internal>[\s\S]*?<\/internal>/g, '').trim();
-      const text = stripped ? formatOutbound(stripped, channel.name as ChannelType) : '';
+      const stripped = raw
+        .replace(/<internal>[\s\S]*?<\/internal>/g, '')
+        .trim();
+      const text = stripped
+        ? formatOutbound(stripped, channel.name as ChannelType)
+        : '';
       logger.info({ group: group.name }, `Agent output: ${raw.length} chars`);
       if (text) {
         await channel.sendMessage(chatJid, text);
@@ -492,7 +517,7 @@ async function runAgent(
     }
 
     return 'success';
-  // eslint-disable-next-line no-catch-all/no-catch-all -- intentional: agent errors must not crash the process
+    // eslint-disable-next-line no-catch-all/no-catch-all -- intentional: agent errors must not crash the process
   } catch (err) {
     agentDurationSeconds.observe((Date.now() - agentStart) / 1000);
     logger.error({ group: group.name, err }, 'Agent error');
@@ -551,14 +576,23 @@ async function startMessageLoop(): Promise<void> {
           // --- Session command interception (message loop) ---
           // Scan ALL messages in the batch for a session command.
           const loopCmdMsg = groupMessages.find(
-            (m) => extractSessionCommand(m.content, getTriggerPattern(group.trigger)) !== null,
+            (m) =>
+              extractSessionCommand(
+                m.content,
+                getTriggerPattern(group.trigger),
+              ) !== null,
           );
 
           if (loopCmdMsg) {
             // Only close active container if the sender is authorized — otherwise an
             // untrusted user could kill in-flight work by sending /compact (DoS).
             // closeStdin no-ops internally when no container is active.
-            if (isSessionCommandAllowed(isMainGroup, loopCmdMsg.is_from_me === true)) {
+            if (
+              isSessionCommandAllowed(
+                isMainGroup,
+                loopCmdMsg.is_from_me === true,
+              )
+            ) {
               queue.closeStdin(chatJid);
             }
             // Enqueue so processGroupMessages handles auth + cursor advancement.
@@ -618,7 +652,7 @@ async function startMessageLoop(): Promise<void> {
           }
         }
       }
-    // eslint-disable-next-line no-catch-all/no-catch-all -- intentional: message loop must keep running
+      // eslint-disable-next-line no-catch-all/no-catch-all -- intentional: message loop must keep running
     } catch (err) {
       logger.error({ err }, 'Error in message loop');
     }
@@ -660,7 +694,10 @@ async function main(): Promise<void> {
   initDatabase();
   logger.info('Database initialized');
   startMetricsServer(METRICS_PORT, METRICS_BIND);
-  logger.info({ port: METRICS_PORT, bind: METRICS_BIND }, 'Metrics server started');
+  logger.info(
+    { port: METRICS_PORT, bind: METRICS_BIND },
+    'Metrics server started',
+  );
   loadState();
 
   // Ensure OneCLI agents exist for all registered groups.
@@ -756,7 +793,10 @@ async function main(): Promise<void> {
       const group = registeredGroups[chatJid];
       if (group) {
         const ch = findChannel(channels, chatJid);
-        messagesReceivedTotal.inc({ group: group.folder, channel: ch?.name || 'unknown' });
+        messagesReceivedTotal.inc({
+          group: group.folder,
+          channel: ch?.name || 'unknown',
+        });
       }
     },
     onChatMetadata: (

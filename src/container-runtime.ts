@@ -113,7 +113,10 @@ export function cleanupOrphans(): void {
         stopContainer(name);
       } catch (err) {
         if (!(err instanceof Error)) throw err;
-        logger.debug({ name, err: err.message }, 'Failed to stop orphan (already stopped?)');
+        logger.debug(
+          { name, err: err.message },
+          'Failed to stop orphan (already stopped?)',
+        );
       }
     }
     if (orphans.length > 0) {

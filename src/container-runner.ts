@@ -491,7 +491,10 @@ export async function runContainerAgent(
       clearTimeout(timeout);
       const duration = Date.now() - startTime;
       containersActive.dec();
-      containerDurationSeconds.observe({ group: group.folder }, duration / 1000);
+      containerDurationSeconds.observe(
+        { group: group.folder },
+        duration / 1000,
+      );
 
       if (timedOut) {
         const ts = new Date().toISOString().replace(/[:.]/g, '-');
@@ -621,7 +624,10 @@ export async function runContainerAgent(
           },
           'Container exited with error',
         );
-        containerFailureTotal.inc({ group: group.folder, reason: 'exit_error' });
+        containerFailureTotal.inc({
+          group: group.folder,
+          reason: 'exit_error',
+        });
 
         resolve({
           status: 'error',

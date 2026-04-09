@@ -14,7 +14,11 @@ export function readEnvFile(keys: string[]): Record<string, string> {
   try {
     content = fs.readFileSync(envFile, 'utf-8');
   } catch (err) {
-    if (!(err instanceof Error) || (err as NodeJS.ErrnoException).code !== 'ENOENT') throw err;
+    if (
+      !(err instanceof Error) ||
+      (err as NodeJS.ErrnoException).code !== 'ENOENT'
+    )
+      throw err;
     logger.debug({ err }, '.env file not found, using defaults');
     return {};
   }
