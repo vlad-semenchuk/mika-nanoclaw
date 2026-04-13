@@ -58,7 +58,12 @@ describe('GmailChannel', () => {
 
   describe('constructor options', () => {
     it('accepts custom poll interval', () => {
-      const ch = new GmailChannel(makeOpts(), 30000);
+      const ch = new GmailChannel(makeOpts(), undefined, 30000);
+      expect(ch.name).toBe('gmail');
+    });
+
+    it('accepts a custom credential directory', () => {
+      const ch = new GmailChannel(makeOpts(), '/tmp/test-creds', 30000);
       expect(ch.name).toBe('gmail');
     });
 
