@@ -374,3 +374,15 @@ export class WhoopChannel implements Channel {
     logger.info('WHOOP channel stopped');
   }
 }
+
+registerChannel('whoop', (opts: ChannelOpts) => {
+  const credDir = path.join(os.homedir(), '.whoop');
+  if (
+    !fs.existsSync(path.join(credDir, 'credentials.json')) ||
+    !fs.existsSync(path.join(credDir, 'token.json'))
+  ) {
+    logger.warn('WHOOP: credentials not found in ~/.whoop/');
+    return null;
+  }
+  return new WhoopChannel(opts);
+});
