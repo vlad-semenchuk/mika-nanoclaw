@@ -34,6 +34,7 @@ export class GmailChannel implements Channel {
   private oauth2Client: OAuth2Client | null = null;
   private gmail: gmail_v1.Gmail | null = null;
   private opts: GmailChannelOpts;
+  private credDir: string;
   private pollIntervalMs: number;
   private pollTimer: ReturnType<typeof setTimeout> | null = null;
   private processedIds = new Set<string>();
@@ -41,15 +42,19 @@ export class GmailChannel implements Channel {
   private consecutiveErrors = 0;
   private userEmail = '';
 
-  constructor(opts: GmailChannelOpts, pollIntervalMs = 60000) {
+  constructor(
+    opts: GmailChannelOpts,
+    credDir = path.join(os.homedir(), '.gmail-mcp'),
+    pollIntervalMs = 60000,
+  ) {
     this.opts = opts;
+    this.credDir = credDir;
     this.pollIntervalMs = pollIntervalMs;
   }
 
   async connect(): Promise<void> {
-    const credDir = path.join(os.homedir(), '.gmail-mcp');
-    const keysPath = path.join(credDir, 'gcp-oauth.keys.json');
-    const tokensPath = path.join(credDir, 'credentials.json');
+    const keysPath = path.join(this.credDir, 'gcp-oauth.keys.json');
+    const tokensPath = path.join(this.credDir, 'credentials.json');
 
     if (!fs.existsSync(keysPath) || !fs.existsSync(tokensPath)) {
       logger.warn(
