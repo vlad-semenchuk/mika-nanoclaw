@@ -365,13 +365,44 @@ registerChannel('gmail', (opts: ChannelOpts) => {
     logger.info('Gmail: disabled (set GMAIL_CHANNEL_ENABLED=1 to enable)');
     return null;
   }
-  const credDir = path.join(os.homedir(), '.gmail-mcp');
-  if (
-    !fs.existsSync(path.join(credDir, 'gcp-oauth.keys.json')) ||
-    !fs.existsSync(path.join(credDir, 'credentials.json'))
-  ) {
-    logger.warn('Gmail: credentials not found in ~/.gmail-mcp/');
+
+  const baseDir = path.join(os.homedir(), '.gmail-mcp');
+  if (!fs.existsSync(baseDir)) {
+    logger.warn('Gmail: ~/.gmail-mcp/ directory not found');
     return null;
   }
-  return new GmailChannel(opts);
+
+  // Scan for subdirectories with valid credentials
+  const entries = fs.readdirSync(baseDir, { withFileTypes: true });
+  const accountDirs: string[] = [];
+
+  for (const entry of entries) {
+    if (!entry.isDirectory()) continue;
+    const dir = path.join(baseDir, entry.name);
+    if (
+      fs.existsSync(path.join(dir, 'gcp-oauth.keys.json')) &&
+      fs.existsSync(path.join(dir, 'credentials.json'))
+    ) {
+      accountDirs.push(dir);
+    }
+  }
+
+  // Legacy fallback: credentials at root level
+  if (accountDirs.length === 0) {
+    if (
+      fs.existsSync(path.join(baseDir, 'gcp-oauth.keys.json')) &&
+      fs.existsSync(path.join(baseDir, 'credentials.json'))
+    ) {
+      logger.info('Gmail: using legacy single-account credentials');
+      return new GmailChannel(opts, baseDir);
+    }
+    logger.warn('Gmail: no account credentials found in ~/.gmail-mcp/');
+    return null;
+  }
+
+  logger.info({ accounts: accountDirs.length }, 'Gmail: discovered accounts');
+  if (accountDirs.length === 1) {
+    return new GmailChannel(opts, accountDirs[0]);
+  }
+  return accountDirs.map((dir) => new GmailChannel(opts, dir));
 });
