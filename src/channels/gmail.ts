@@ -77,6 +77,7 @@ export class GmailChannel implements Channel {
         Object.assign(current, newTokens);
         fs.writeFileSync(tokensPath, JSON.stringify(current, null, 2));
         logger.debug('Gmail OAuth tokens refreshed');
+      // eslint-disable-next-line no-catch-all/no-catch-all
       } catch (err) {
         logger.warn({ err }, 'Failed to persist refreshed Gmail tokens');
       }
@@ -91,9 +92,13 @@ export class GmailChannel implements Channel {
 
     // Start polling with error backoff
     const schedulePoll = () => {
-      const backoffMs = this.consecutiveErrors > 0
-        ? Math.min(this.pollIntervalMs * Math.pow(2, this.consecutiveErrors), 30 * 60 * 1000)
-        : this.pollIntervalMs;
+      const backoffMs =
+        this.consecutiveErrors > 0
+          ? Math.min(
+              this.pollIntervalMs * Math.pow(2, this.consecutiveErrors),
+              30 * 60 * 1000,
+            )
+          : this.pollIntervalMs;
       this.pollTimer = setTimeout(() => {
         this.pollForMessages()
           .catch((err) => logger.error({ err }, 'Gmail poll error'))
@@ -152,6 +157,7 @@ export class GmailChannel implements Channel {
         },
       });
       logger.info({ to: meta.sender, threadId }, 'Gmail reply sent');
+    // eslint-disable-next-line no-catch-all/no-catch-all
     } catch (err) {
       logger.error({ jid, err }, 'Failed to send Gmail reply');
     }
@@ -208,10 +214,21 @@ export class GmailChannel implements Channel {
       }
 
       this.consecutiveErrors = 0;
+    // eslint-disable-next-line no-catch-all/no-catch-all
     } catch (err) {
       this.consecutiveErrors++;
-      const backoffMs = Math.min(this.pollIntervalMs * Math.pow(2, this.consecutiveErrors), 30 * 60 * 1000);
-      logger.error({ err, consecutiveErrors: this.consecutiveErrors, nextPollMs: backoffMs }, 'Gmail poll failed');
+      const backoffMs = Math.min(
+        this.pollIntervalMs * Math.pow(2, this.consecutiveErrors),
+        30 * 60 * 1000,
+      );
+      logger.error(
+        {
+          err,
+          consecutiveErrors: this.consecutiveErrors,
+          nextPollMs: backoffMs,
+        },
+        'Gmail poll failed',
+      );
     }
   }
 
@@ -268,9 +285,7 @@ export class GmailChannel implements Channel {
 
     // Find the main group to deliver the email notification
     const groups = this.opts.registeredGroups();
-    const mainEntry = Object.entries(groups).find(
-      ([, g]) => g.isMain === true,
-    );
+    const mainEntry = Object.entries(groups).find(([, g]) => g.isMain === true);
 
     if (!mainEntry) {
       logger.debug(
@@ -300,6 +315,7 @@ export class GmailChannel implements Channel {
         id: messageId,
         requestBody: { removeLabelIds: ['UNREAD'] },
       });
+    // eslint-disable-next-line no-catch-all/no-catch-all
     } catch (err) {
       logger.warn({ messageId, err }, 'Failed to mark email as read');
     }
@@ -340,6 +356,10 @@ export class GmailChannel implements Channel {
 }
 
 registerChannel('gmail', (opts: ChannelOpts) => {
+  if (process.env.GMAIL_CHANNEL_ENABLED !== '1') {
+    logger.info('Gmail: disabled (set GMAIL_CHANNEL_ENABLED=1 to enable)');
+    return null;
+  }
   const credDir = path.join(os.homedir(), '.gmail-mcp');
   if (
     !fs.existsSync(path.join(credDir, 'gcp-oauth.keys.json')) ||

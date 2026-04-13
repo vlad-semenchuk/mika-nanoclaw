@@ -51,6 +51,10 @@ When you learn something important:
 
 @SOUL.md
 
+## Email Notifications
+
+When you receive an email notification (messages starting with `[Email from ...`), inform the user about it but do NOT reply to the email unless specifically asked. You have Gmail tools available — use them only when the user explicitly asks you to reply, forward, or take action on an email.
+
 ## Message Formatting
 
 Format messages based on the channel. Check the group folder name prefix:
