@@ -301,7 +301,7 @@ export class GmailChannel implements Channel {
     }
 
     const mainJid = mainEntry[0];
-    const content = `[Email from ${senderName} <${senderEmail}>]\nSubject: ${subject}\n\n${body}`;
+    const content = `[Email from ${senderName} <${senderEmail}> → ${this.userEmail}]\nSubject: ${subject}\n\n${body}`;
 
     this.opts.onMessage(mainJid, {
       id: messageId,
