@@ -330,6 +330,8 @@ export class WhoopChannel implements Channel {
 
     await this.apiFetch('/v2/user/profile/basic');
     this.connected = true;
+    // On first connect, only fetch the last 24 hours to avoid flooding
+    this.lastPollTime = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
     logger.info('WHOOP channel connected');
 
     const schedulePoll = () => {
