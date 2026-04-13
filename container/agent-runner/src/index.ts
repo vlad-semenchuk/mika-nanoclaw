@@ -470,6 +470,7 @@ async function runQuery(
         'NotebookEdit',
         'mcp__nanoclaw__*',
         'mcp__parallel-task__*',
+        'mcp__gmail__*',
       ],
       env: sdkEnv,
       permissionMode: 'bypassPermissions',
@@ -494,6 +495,10 @@ async function runQuery(
             },
           },
         } : {}),
+        gmail: {
+          command: 'npx',
+          args: ['-y', '@gongrzhe/server-gmail-autoauth-mcp'],
+        },
       },
       hooks: {
         PreCompact: [
