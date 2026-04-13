@@ -118,6 +118,102 @@ export class WhoopChannel implements Channel {
     );
   }
 
+  private formatMilliToHM(ms: number): string {
+    const totalMinutes = Math.floor(ms / 60000);
+    const hours = Math.floor(totalMinutes / 60);
+    const minutes = totalMinutes % 60;
+    return `${hours}h ${minutes}m`;
+  }
+
+  private formatRecovery(r: any): string {
+    const s = r.score;
+    return (
+      `[WHOOP Recovery] Score: ${s.recovery_score}%` +
+      ` | HRV: ${s.hrv_rmssd_milli.toFixed(1)}ms` +
+      ` | RHR: ${s.resting_heart_rate}bpm` +
+      ` | SPO2: ${s.spo2_percentage}%` +
+      ` | Skin Temp: ${s.skin_temp_celsius}°C`
+    );
+  }
+
+  private formatSleep(s: any): string {
+    const sc = s.score;
+    const ss = sc.stage_summary;
+    return (
+      `[WHOOP Sleep] Performance: ${sc.sleep_performance_percentage}%` +
+      ` | Duration: ${this.formatMilliToHM(ss.total_in_bed_time_milli)}` +
+      ` | Efficiency: ${sc.sleep_efficiency_percentage}%` +
+      ` | REM: ${this.formatMilliToHM(ss.total_rem_sleep_time_milli)}` +
+      ` | Deep: ${this.formatMilliToHM(ss.total_slow_wave_sleep_time_milli)}` +
+      ` | Respiratory Rate: ${sc.respiratory_rate}`
+    );
+  }
+
+  private formatWorkout(w: any): string {
+    const sc = w.score;
+    const durationMs = new Date(w.end).getTime() - new Date(w.start).getTime();
+    const distanceKm = (sc.distance_meter / 1000).toFixed(1);
+    return (
+      `[WHOOP Workout] ${w.sport_name}` +
+      ` | Strain: ${sc.strain.toFixed(1)}` +
+      ` | Avg HR: ${sc.average_heart_rate}bpm` +
+      ` | Max HR: ${sc.max_heart_rate}bpm` +
+      ` | Duration: ${this.formatMilliToHM(durationMs)}` +
+      ` | Distance: ${distanceKm}km`
+    );
+  }
+
+  private formatCycle(c: any): string {
+    const sc = c.score;
+    const kcal = Math.floor(sc.kilojoule / 4.184);
+    return (
+      `[WHOOP Cycle] Strain: ${sc.strain}` +
+      ` | Calories: ${kcal}kcal` +
+      ` | Avg HR: ${sc.average_heart_rate}bpm` +
+      ` | Max HR: ${sc.max_heart_rate}bpm`
+    );
+  }
+
+  private async apiFetch<T>(
+    endpoint: string,
+    params?: Record<string, string>,
+  ): Promise<T> {
+    if (this.needsRefresh()) {
+      await this.refreshAccessToken();
+    }
+
+    const url = new URL(WHOOP_BASE_URL + endpoint);
+    if (params) {
+      for (const [key, value] of Object.entries(params)) {
+        url.searchParams.set(key, value);
+      }
+    }
+
+    const doRequest = async (): Promise<Response> => {
+      return fetch(url.toString(), {
+        headers: { Authorization: `Bearer ${this.accessToken}` },
+      });
+    };
+
+    let res = await doRequest();
+
+    if (res.status === 401) {
+      await this.refreshAccessToken();
+      res = await doRequest();
+    }
+
+    if (res.status === 429) {
+      logger.warn('WHOOP API rate limited (429)');
+      throw new Error('WHOOP API rate limited');
+    }
+
+    if (!res.ok) {
+      throw new Error(`WHOOP API error: ${res.status} ${res.statusText}`);
+    }
+
+    return res.json() as Promise<T>;
+  }
+
   async connect(): Promise<void> {
     // TODO: implemented in Task 3
   }
