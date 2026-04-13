@@ -77,7 +77,7 @@ export class GmailChannel implements Channel {
         Object.assign(current, newTokens);
         fs.writeFileSync(tokensPath, JSON.stringify(current, null, 2));
         logger.debug('Gmail OAuth tokens refreshed');
-      // eslint-disable-next-line no-catch-all/no-catch-all
+        // eslint-disable-next-line no-catch-all/no-catch-all
       } catch (err) {
         logger.warn({ err }, 'Failed to persist refreshed Gmail tokens');
       }
@@ -157,7 +157,7 @@ export class GmailChannel implements Channel {
         },
       });
       logger.info({ to: meta.sender, threadId }, 'Gmail reply sent');
-    // eslint-disable-next-line no-catch-all/no-catch-all
+      // eslint-disable-next-line no-catch-all/no-catch-all
     } catch (err) {
       logger.error({ jid, err }, 'Failed to send Gmail reply');
     }
@@ -214,7 +214,7 @@ export class GmailChannel implements Channel {
       }
 
       this.consecutiveErrors = 0;
-    // eslint-disable-next-line no-catch-all/no-catch-all
+      // eslint-disable-next-line no-catch-all/no-catch-all
     } catch (err) {
       this.consecutiveErrors++;
       const backoffMs = Math.min(
@@ -315,7 +315,7 @@ export class GmailChannel implements Channel {
         id: messageId,
         requestBody: { removeLabelIds: ['UNREAD'] },
       });
-    // eslint-disable-next-line no-catch-all/no-catch-all
+      // eslint-disable-next-line no-catch-all/no-catch-all
     } catch (err) {
       logger.warn({ messageId, err }, 'Failed to mark email as read');
     }
