@@ -33,10 +33,6 @@ export class WhoopChannel implements Channel {
   private connected = false;
   private pollTimer: ReturnType<typeof setTimeout> | null = null;
 
-  private processedIds = new Set<string>();
-  private consecutiveErrors = 0;
-  private lastPollTime: string | null = null;
-
   private clientId = '';
   private clientSecret = '';
   private accessToken = '';
@@ -218,139 +214,8 @@ export class WhoopChannel implements Channel {
     return res.json() as Promise<T>;
   }
 
-  private findMainJid(): string | null {
-    const groups = this.opts.registeredGroups();
-    for (const [jid, group] of Object.entries(groups)) {
-      if (group.isMain) return jid;
-    }
-    return null;
-  }
-
-  private processRecords(
-    type: string,
-    records: any[],
-    getId: (r: any) => string,
-  ): void {
-    const mainJid = this.findMainJid();
-    if (!mainJid) return;
-
-    for (const record of records) {
-      if (record.score_state !== 'SCORED') continue;
-
-      const id = getId(record);
-      const key = `whoop:${type}:${id}`;
-      if (this.processedIds.has(key)) continue;
-
-      let content: string;
-      switch (type) {
-        case 'recovery':
-          content = this.formatRecovery(record);
-          break;
-        case 'sleep':
-          content = this.formatSleep(record);
-          break;
-        case 'cycle':
-          content = this.formatCycle(record);
-          break;
-        case 'workout':
-          content = this.formatWorkout(record);
-          break;
-        default:
-          content = `[WHOOP] ${type}: ${JSON.stringify(record)}`;
-      }
-
-      this.opts.onMessage(mainJid, {
-        id: key,
-        chat_jid: mainJid,
-        sender: 'whoop',
-        sender_name: 'WHOOP',
-        content,
-        timestamp: record.updated_at,
-        is_from_me: false,
-      });
-
-      logger.info({ type, id, mainJid }, 'WHOOP record delivered');
-
-      this.processedIds.add(key);
-      if (this.processedIds.size > 5000) {
-        const entries = Array.from(this.processedIds);
-        this.processedIds = new Set(entries.slice(entries.length - 2500));
-      }
-    }
-  }
-
-  private async pollForEvents(): Promise<void> {
-    const params: Record<string, string> = { limit: '25' };
-    if (this.lastPollTime) {
-      params.start = this.lastPollTime;
-    }
-
-    try {
-      const [recovery, sleep, cycle, workout] = await Promise.all([
-        this.apiFetch<{ records: any[] }>('/v2/recovery', params),
-        this.apiFetch<{ records: any[] }>('/v2/activity/sleep', params),
-        this.apiFetch<{ records: any[] }>('/v2/cycle', params),
-        this.apiFetch<{ records: any[] }>('/v2/activity/workout', params),
-      ]);
-
-      this.processRecords('recovery', recovery.records ?? [], (r) =>
-        r.cycle_id.toString(),
-      );
-      this.processRecords('sleep', sleep.records ?? [], (r) => r.id);
-      this.processRecords('cycle', cycle.records ?? [], (r) => r.id.toString());
-      this.processRecords('workout', workout.records ?? [], (r) => r.id);
-
-      this.lastPollTime = new Date().toISOString();
-      this.consecutiveErrors = 0;
-    } catch (err) {
-      this.consecutiveErrors++;
-      const backoffMin = Math.min(
-        this.config.pollIntervalMs * Math.pow(2, this.consecutiveErrors),
-        30 * 60 * 1000,
-      );
-      logger.warn(
-        {
-          err,
-          consecutiveErrors: this.consecutiveErrors,
-          backoffMs: backoffMin,
-        },
-        'WHOOP poll error',
-      );
-      throw err;
-    }
-  }
-
   async connect(): Promise<void> {
-    if (!this.loadCredentials()) {
-      logger.warn(
-        'WHOOP credentials not found. Skipping WHOOP channel. Run /add-whoop to set up.',
-      );
-      return;
-    }
-
-    await this.apiFetch('/v2/user/profile/basic');
-    this.connected = true;
-    logger.info('WHOOP channel connected');
-
-    const schedulePoll = () => {
-      const backoffMs =
-        this.consecutiveErrors > 0
-          ? Math.min(
-              this.config.pollIntervalMs * Math.pow(2, this.consecutiveErrors),
-              30 * 60 * 1000,
-            )
-          : this.config.pollIntervalMs;
-      this.pollTimer = setTimeout(() => {
-        this.pollForEvents()
-          .catch((err) => logger.error({ err }, 'WHOOP poll error'))
-          .finally(() => {
-            if (this.connected) schedulePoll();
-          });
-      }, backoffMs);
-    };
-
-    await this.pollForEvents();
-    schedulePoll();
+    // TODO: implemented in Task 3
   }
 
   async sendMessage(_jid: string, _text: string): Promise<void> {
