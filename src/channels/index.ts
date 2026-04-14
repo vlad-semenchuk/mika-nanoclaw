@@ -11,7 +11,4 @@ import './gmail.js';
 // telegram
 import './telegram.js';
 
-// whoop
-import './whoop.js';
-
 // whatsapp
